@@ -6,10 +6,12 @@ interface Attribute {
 }
  interface Product {
     name: string;
-    description: string;
+    description?: string;
     priceInEth: number;
-    attributes: Attribute[];
-    image: string;
+    attributes?: Attribute[];
+    image?: string;
+    category: string;
+    quantity: number;
     owner: string;
 }
 
@@ -23,13 +25,15 @@ const AttributeSchema = new Schema<Attribute>({
 
 const ProductSchema = new Schema<ProductDocument>({
     name: { type: String, required: true },
-    description: { type: String, required: true },
+    description: { type: String},
     priceInEth: { type: Number, required: true },
-    attributes: { type: [AttributeSchema], required: true },
-    image: { type: String, required: true },
+    attributes: { type: [AttributeSchema]},
+    image: { type: String },
+    category: { type: String, required: true },
+    quantity: { type: Number, default: 1 },
     owner: { type: String, required: true },
 });
 
-const ProductModel = mongoose.model<ProductDocument>('Product', ProductSchema);
+const Product = mongoose.models.Product || mongoose.model<ProductDocument>('Product', ProductSchema);
 
-export default ProductModel;
+export default Product;

@@ -21,9 +21,9 @@ contract MintNFT is ERC721, Ownable {
         address indexed to
     );
 
-    constructor() ERC721("ProductNFT", "PNFT") {}
+    constructor() ERC721("ProductNFT", "PNFT") Ownable(msg.sender) {}
 
-    function mintProductNFT(x
+    function mintProductNFT(
         address recipient,
         string memory productInfo
     ) public onlyOwner returns (uint256) {

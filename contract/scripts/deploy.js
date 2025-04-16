@@ -5,7 +5,7 @@ async function main() {
   console.log("Deploying contracts with the account:", deployer.address);
 
   // Deploy ProductTracking
-  console.log("Getting contract factory for ProductTracking...");
+  console.log("Getting contract factory for MintNFT...");
   const MintNFT = await hre.ethers.getContractFactory(
     "MintNFT"
   );
@@ -14,7 +14,7 @@ async function main() {
   console.log("Awaiting deployment confirmation...");
   await mintNFT.waitForDeployment();
   console.log(
-    "ProductTracking deployed to:",
+    "MintNFT deployed to:",
     await mintNFT.getAddress()
   );
 

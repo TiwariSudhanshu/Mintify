@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Upload, Loader2 } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 interface FormData {
   name: string;
@@ -74,34 +75,46 @@ export default function AddProduct() {
 
     try {
       // Create FormData object for file upload
-      const mintData = new FormData();
-      mintData.append("name", formData.name);
-      mintData.append("description", formData.description);
-      mintData.append("price", formData.price);
-      mintData.append("quantity", formData.quantity);
-      mintData.append("category", formData.category);
-      mintData.append("attributes", JSON.stringify(formData.attributes));
-      if (formData.image) {
-        mintData.append("image", formData.image);
-      }
+      // const mintData = new FormData();
+      // mintData.append("name", formData.name);
+      // mintData.append("description", formData.description);
+      // mintData.append("price", formData.price);
+      // mintData.append("quantity", formData.quantity);
+      // mintData.append("category", formData.category);
+      // mintData.append("attributes", JSON.stringify(formData.attributes));
+      // if (formData.image) {
+      //   mintData.append("image", formData.image);
+      // }
 
       // Submit to API
       const response = await fetch("/api/mintNFT", {
         method: "POST",
-        body: mintData,
+        body: JSON.stringify({
+          recipient: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266", 
+          name: formData.name,
+          description: formData.description,
+          price: formData.price,
+          quantity: formData.quantity,
+          category: formData.category,
+          // attributes: formData.attributes,
+          // image: formData.image,
+        }),
         // Note: Don't set Content-Type header when using FormData
-      });
+        headers: {
+          "Content-Type": "application/json", 
+          
+      }});
 
       if (!response.ok) {
         throw new Error("Failed to mint NFT");
       }
 
       const result = await response.json();
-      alert("Product successfully minted as NFT!");
+      toast.success("Product successfully minted as NFT!");
       router.push("/dashboard"); // Redirect to dashboard
     } catch (error) {
       console.error("Error minting NFT:", error);
-      alert("Failed to mint NFT. Please try again.");
+      toast.error("Failed to mint NFT. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -266,7 +279,7 @@ export default function AddProduct() {
                             name="image-upload"
                             type="file"
                             accept="image/*"
-                            required
+                            // required
                             onChange={handleImageChange}
                             className="sr-only"
                           />
