@@ -1,67 +1,60 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, ArrowRight, Info, Search } from "lucide-react";
+import { ArrowLeft, Info, Search } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
 
-// Type definition
-interface Product {
-  _id: string;
-  name: string;
-  description: string;
-  category: string;
-  priceInEth?: number;
-  image?: string;
-  status?: string;
-}
+// Sample product data
+const sampleProducts = [
+  {
+    _id: "prod123456789",
+    name: "Luxury Watch Elite X1",
+    description: "Premium luxury timepiece with authentic certification",
+    category: "Watches",
+    priceInEth: 2.5,
+    image: "/default-product.jpg",
+    status: "Active"
+  },
+  {
+    _id: "prod987654321",
+    name: "Designer Handbag Model S",
+    description: "Authentic designer handbag with verification chip",
+    category: "Fashion",
+    priceInEth: 1.8,
+    image: "/default-product.jpg",
+    status: "Active"
+  },
+  {
+    _id: "prod456789123",
+    name: "Limited Edition Sneakers",
+    description: "Collectible footwear with blockchain authentication",
+    category: "Footwear",
+    priceInEth: 0.9,
+    image: "/default-product.jpg",
+    status: "Sold"
+  }
+];
 
-
-export function BrandDashboard() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
+function SearchProduct(): React.JSX.Element {
   const [searchTerm, setSearchTerm] = useState("");
+  const [filteredProducts, setFilteredProducts] = useState(sampleProducts);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const router = useRouter();
-
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const res = await fetch("/api/getAllNFT");
-        const json = await res.json();
-
-        if (!Array.isArray(json)) {
-          throw new Error("Invalid data format");
-        }
-
-        setProducts(json);
-        setFilteredProducts(json);
-      } catch (err: any) {
-        toast.error("Failed to load products: " + err.message);
-      }
-    };
-
-    fetchProducts();
-  }, []);
 
   // Filter products when search term changes
   useEffect(() => {
-    if (searchTerm.trim() === "") {
-      setFilteredProducts(products);
-    } else {
-      const results = products.filter(product =>
-        product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.category?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-      setFilteredProducts(results);
-    }
-  }, [searchTerm, products]);
+    const results = sampleProducts.filter(product =>
+      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.category.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    setFilteredProducts(results);
+  }, [searchTerm]);
 
-  const openDetails = (product: Product) => {
+  const openDetails = (product: any) => {
     setSelectedProduct(product);
     setIsDetailsModalOpen(true);
   };
@@ -72,56 +65,30 @@ export function BrandDashboard() {
       <header className="py-6 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500">
-              Brand Dashboard
+            <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-teal-500">
+              Search Products
             </h1>
-            <p className="mt-1 text-gray-300">Manage your authenticated products</p>
+            <p className="mt-1 text-gray-300">Find and explore authenticated products</p>
           </div>
-            <Button
-              onClick={() => router.push("/add-product")}
-              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2"
-            >
-              <Plus className="h-5 w-5" /> Add New Product
-            </Button>
+          <Button
+            onClick={() => router.push("/dashboard")}
+            className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2"
+          >
+            <ArrowLeft className="h-5 w-5" /> Back to Dashboard
+          </Button>
         </div>
       </header>
 
-      {/* Stats Overview */}
+      {/* Search Section */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+        <div className="mb-8">
           <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6">
-            <h3 className="text-lg font-medium text-gray-300">Total Products</h3>
-            <p className="text-3xl font-bold mt-2">{products.length}</p>
-          </div>
-          <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6">
-            <h3 className="text-lg font-medium text-gray-300">Active Listings</h3>
-            <p className="text-3xl font-bold mt-2">
-              {products.filter((p) => p.status === "Active").length}
-            </p>
-          </div>
-          <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6">
-            <h3 className="text-lg font-medium text-gray-300">Authentications</h3>
-            <p className="text-3xl font-bold mt-2">214</p>
-          </div>
-        </div>
-
-        {/* Product Grid */}
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-teal-500">
-            Your Products
-          </h2>
-          <p className="text-gray-400">{filteredProducts.length} of {products.length} products</p>
-        </div>
-
-        {/* Search Bar */}
-        <div className="mb-6">
-          <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4">
-            <div className="flex gap-4">
+            <div className="flex flex-col md:flex-row gap-4">
               <div className="relative flex-1">
                 <Search className="h-5 w-5 absolute top-3 left-3 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Search your products..."
+                  placeholder="Search by name, description or category..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10 bg-white/5 border border-white/10 rounded-md h-10 w-full px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
@@ -138,6 +105,15 @@ export function BrandDashboard() {
           </div>
         </div>
 
+        {/* Results Counter */}
+        <div className="mb-6 flex justify-between items-center">
+          <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-teal-500">
+            Search Results
+          </h2>
+          <p className="text-gray-400">{filteredProducts.length} products found</p>
+        </div>
+
+        {/* Product Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredProducts.length > 0 ? (
             filteredProducts.map((product) => (
@@ -147,13 +123,13 @@ export function BrandDashboard() {
               >
                 <div className="relative h-48">
                   <Image
-                    src={product.image || "/default-product.jpg"}
+                    src={product.image}
                     alt={product.name}
                     fill
                     className="object-cover rounded-t-xl"
                   />
                   <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-sm text-xs font-medium py-1 px-2 rounded-full">
-                    {product.status || "Unknown"}
+                    {product.status}
                   </div>
                 </div>
                 <div className="p-4">
@@ -168,7 +144,7 @@ export function BrandDashboard() {
                       Details <Info className="ml-1 h-4 w-4" />
                     </Button>
                     <p className="text-xs text-gray-400">
-                      ID: #{product._id.slice(-4).padStart(4, "0")}
+                      {product.priceInEth} ETH
                     </p>
                   </div>
                 </div>
@@ -204,7 +180,7 @@ export function BrandDashboard() {
             </Button>
             <div className="mb-4">
               <Image
-                src={selectedProduct.image || "/default-product.jpg"}
+                src={selectedProduct.image}
                 alt={selectedProduct.name}
                 width={400}
                 height={300}
@@ -212,6 +188,24 @@ export function BrandDashboard() {
               />
             </div>
             <p className="text-gray-300 mb-4">{selectedProduct.description}</p>
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div>
+                <h4 className="text-sm text-gray-400">Category</h4>
+                <p className="font-medium">{selectedProduct.category}</p>
+              </div>
+              <div>
+                <h4 className="text-sm text-gray-400">Price</h4>
+                <p className="font-medium">{selectedProduct.priceInEth} ETH</p>
+              </div>
+              <div>
+                <h4 className="text-sm text-gray-400">Status</h4>
+                <p className="font-medium">{selectedProduct.status}</p>
+              </div>
+              <div>
+                <h4 className="text-sm text-gray-400">ID</h4>
+                <p className="font-medium">#{selectedProduct._id.slice(-8)}</p>
+              </div>
+            </div>
             <div className="flex justify-end">
               <Button
                 className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
@@ -227,4 +221,4 @@ export function BrandDashboard() {
   );
 }
 
-export default BrandDashboard;
+export default SearchProduct;
