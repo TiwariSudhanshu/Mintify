@@ -37,30 +37,6 @@ export async function POST(req: Request) {
     //   return NextResponse.json({ error: "Product already exists in database" }, { status: 400 });
     // }
 
-    console.log("Creating product in database...");
-    let product;
-
-    try {
-      product = await Product.create({
-        name,
-        description,
-        priceInEth: price,
-        // attributes,
-        // image: imageUrl,
-        owner: recipient,
-        category,
-        quantity
-      });
-    } catch (e) {
-      console.error("Error creating product in database: ", e);
-      return NextResponse.json({ error: "Error creating product in database" }, { status: 500 });
-    }
-
-    if (!product) {
-      return NextResponse.json({ error: "Failed to create product" }, { status: 500 });
-    }
-
-    console.log("Product created in database: ", product);
 
     // Mint NFT
     if (!recipient.startsWith("0x")) {
@@ -96,6 +72,31 @@ export async function POST(req: Request) {
     }
 
     console.log("NFT Minted with token ID: ", tokenId);
+    console.log("Creating product in database...");
+    let product;
+
+    try {
+      product = await Product.create({
+        name,
+        description,
+        priceInEth: price,
+        // attributes,
+        // image: imageUrl,
+        owner: recipient,
+        category,
+        quantity
+      });
+    } catch (e) {
+      console.error("Error creating product in database: ", e);
+      return NextResponse.json({ error: "Error creating product in database" }, { status: 500 });
+    }
+
+    if (!product) {
+      return NextResponse.json({ error: "Failed to create product" }, { status: 500 });
+    }
+
+    console.log("Product created in database: ", product);
+
 
     return NextResponse.json({
       message: "NFT Minted successfully",
