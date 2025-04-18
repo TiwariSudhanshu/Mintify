@@ -2,9 +2,12 @@
 import { NextResponse } from "next/server";
 import { contract } from "@/lib/contract";
 import Product from "@/models/Product.model";
+import connectDB from "@/lib/connectDB";
 
 export async function GET(res: NextResponse) {
   try {
+    await connectDB();
+    console.log("Connected to DB");
     const tokenIds = await contract.getAllContractTokens();
     const formattedTokenIds = tokenIds.map((tokenId: any) =>
       tokenId.toString()
@@ -15,10 +18,7 @@ export async function GET(res: NextResponse) {
         try {
           const [metaData, owner] = await contract.getProductDetails(tokenId);
           const productName = metaData.split(" - ")[0];
-
-          // Step 3: Query DB for product
-          const product = await Product.findOne({ name: productName, owner });
-
+          const product = await Product.findOne({ name: productName, owner: owner.toLowerCase()});
           if (!product) {
             console.warn(
               `Product not found for token ${tokenId}: ${productName}`

@@ -89,7 +89,7 @@ export default function WalletConnectPopup({
         console.log("Existing user data:", existingUser);
         if (response.ok) {
           if (data.exists) {
-            toast.success(`Welcome back, ${data.name}!`);
+            toast.success(`Welcome back, ${existingUser.name}!`);
             setWalletExists(true);
             setData({ name: existingUser.name, email: existingUser.email, role: existingUser.userRole });
             // Proceed with login logic

@@ -48,7 +48,7 @@ const RegisterPopup: React.FC<RegisterPopupProps> = ({ isOpen, onClose, address 
         toast.success(data.message);
         dispatch({ type: 'userRole/setRole', payload: data.data.role });
         dispatch({ type: 'userMeta/setMeta', payload: { name: data.data.name, email: data.data.email } });
-        router.push("/dashboard");
+        router.push("/");
       } else {
         toast.error(data.message || "Error registering wallet");
       }

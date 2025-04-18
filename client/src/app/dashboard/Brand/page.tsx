@@ -6,6 +6,10 @@ import { Plus, ArrowRight, Info, Search } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { IoIosLogOut } from "react-icons/io";
+import { useDispatch } from "react-redux";
+import { clearUserMetaData } from "@/store/userMetaDataSlice";
+import { clearRole } from "@/store/userRoleSlice";
 
 // Type definition
 interface Product {
@@ -47,6 +51,24 @@ export function BrandDashboard() {
     fetchProducts();
   }, []);
 
+  const dispatch = useDispatch();
+
+  const handleLogout = () => {
+    // Clear Redux state
+    dispatch(clearUserMetaData());
+    dispatch(clearRole());
+    
+    // Also clear any additional sessionStorage items if needed
+    if (typeof window !== 'undefined') {
+      sessionStorage.clear(); // This clears all sessionStorage items
+    }
+    
+    // Show success message
+    toast.success("Logged out successfully");
+    
+    // Redirect to home page
+    router.push('/');
+  };
   // Filter products when search term changes
   useEffect(() => {
     if (searchTerm.trim() === "") {
@@ -69,6 +91,9 @@ export function BrandDashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-b pt-30 from-black via-gray-900 to-gray-950 text-white">
       {/* Header */}
+      <div className="fixed text-2xl cursor-pointer top-0 right-0 p-4 z-50 bg-gray-900/80 backdrop-blur-sm rounded-bl-xl rounded-tr-xl shadow-lg flex items-center gap-2">
+      <IoIosLogOut onClick={handleLogout}/>
+      </div>
       <header className="py-6 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div>
@@ -77,12 +102,13 @@ export function BrandDashboard() {
             </h1>
             <p className="mt-1 text-gray-300">Manage your authenticated products</p>
           </div>
-            <Button
-              onClick={() => router.push("/add-product")}
-              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2"
-            >
-              <Plus className="h-5 w-5" /> Add New Product
-            </Button>
+          <Button
+  onClick={() => router.push("/add-product")}
+  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2"
+>
+  <Plus className="h-5 w-5" /> 
+  <span className="hidden sm:inline">Add New Product</span>
+</Button>
         </div>
       </header>
 
@@ -153,7 +179,7 @@ export function BrandDashboard() {
                     className="object-cover rounded-t-xl"
                   />
                   <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-sm text-xs font-medium py-1 px-2 rounded-full">
-                    {product.status || "Unknown"}
+                    {product.category || "Unknown"}
                   </div>
                 </div>
                 <div className="p-4">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { 
@@ -61,6 +61,7 @@ export default function ConsumerDashboard() {
   // Sample user data
   const userWallet = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045";
   
+
   // Sample NFTs data - in a real app these would be fetched from an API
   const sampleNFTs = [
     {
@@ -170,15 +171,31 @@ export default function ConsumerDashboard() {
   };
 
   // Search for NFT by ID
-  const handleSearch = () => {
+  const handleSearch = async() => {
     setIsSearching(true);
-    // Simulate API call with timeout
-    setTimeout(() => {
-      const result = sampleNFTs.find(nft => nft.tokenId === searchQuery);
-      setSearchResult(result || null);
-      setIsSearching(false);
-    }, 800);
+   try {
+    const response = await fetch("/api/searchNFT", {
+     method: "POST",
+     headers: {
+       "Content-Type": "application/json"
+     },
+     body: JSON.stringify({ tokenId: searchQuery })
+    })
+    const data = await response.json();
+    console.log("Data: ", data);
+     setSearchResult(data);
+     setIsSearching(false);
+     setSearchQuery("");
+   }
+   catch (error) {
+    console.error("Error fetching NFT data:", error);
+    setIsSearching(false);
+    setSearchResult(null);
+   }
   };
+  useEffect(() => {
+    console.log("Search Result changed:", searchResult);
+  }, [searchResult]);
 
   return (
     <div className="min-h-screen pt-30 bg-gradient-to-b from-black via-gray-900 to-gray-950 text-white">
@@ -281,7 +298,7 @@ export default function ConsumerDashboard() {
                     NFT #{searchResult.tokenId}
                   </span>
                   <span className="mx-2">•</span>
-                  <span>{searchResult.category.charAt(0).toUpperCase() + searchResult.category.slice(1)}</span>
+                  <span>{searchResult?.category?.charAt(0).toUpperCase() + searchResult.category.slice(1)}</span>
                   <span className="mx-2">•</span>
                   <Clock className="h-4 w-4 mr-1" /> {formatDate(searchResult.createdAt)}
                 </div>

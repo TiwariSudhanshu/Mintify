@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, FormEvent, ChangeEvent } from "react";
+import { useState, FormEvent, ChangeEvent, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Upload, Loader2 } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useSelector } from "react-redux";
 
 
 interface FormData {
@@ -22,6 +23,7 @@ export default function AddProduct() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const walletAddress = useSelector((state:any) => state.wallet.address);
   const [formData, setFormData] = useState<FormData>({
     name: "",
     description: "",
@@ -77,7 +79,7 @@ export default function AddProduct() {
     try {
       // Create FormData object for file upload
       const mintData = new FormData();
-      mintData.append("recipient", "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266");
+      mintData.append("recipient", walletAddress);
       mintData.append("name", formData.name);
       mintData.append("description", formData.description);
       mintData.append("price", formData.price);
@@ -112,19 +114,19 @@ export default function AddProduct() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-black via-gray-900 to-gray-950 text-white">
+    <div className="min-h-screen pt-10 bg-gradient-to-b from-black via-gray-900 to-gray-950 text-white">
       {/* Header */}
       <header className="py-6 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto">
           <Button
             variant="ghost"
-            className="text-gray-400 hover:text-white mb-4 flex items-center"
+            className="text-gray-400 hover:text-black mb-8 flex items-center"
             onClick={() => router.back()}
           >
             <ArrowLeft className="mr-2 h-4 w-4" /> Back to Dashboard
           </Button>
-          <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500">Add New Product</h1>
-          <p className="mt-1 text-gray-300">Create a new NFT-backed product for your collection</p>
+          <h1 className="text-3xl font-bold text-transparent bg-clip-text text-center bg-gradient-to-r from-purple-400 to-pink-500">Add New Product</h1>
+          <p className="mt-1 text-gray-300 text-center ">Create a new NFT-backed product for your collection</p>
         </div>
       </header>
 

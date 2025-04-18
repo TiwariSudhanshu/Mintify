@@ -100,7 +100,7 @@ export async function POST(req: Request) {
         description,
         priceInEth: price,
         image: imageUrl,
-        owner: recipient,
+        owner: recipient.toLowerCase(),
         category,
         quantity: parseInt(quantity) || 1
       });
