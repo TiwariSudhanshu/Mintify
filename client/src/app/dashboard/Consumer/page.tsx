@@ -2,6 +2,11 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
+import { toast } from "sonner";
+import { IoIosLogOut } from "react-icons/io";
+import { useDispatch } from "react-redux";
+import { clearUserMetaData } from "@/store/userMetaDataSlice";
+import { clearRole } from "@/store/userRoleSlice";
 import { Button } from "@/components/ui/button";
 import { 
   Search, 
@@ -21,23 +26,27 @@ import {
   ChevronRight,
   ShoppingBag
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 // Define TypeScript interfaces
 interface NFT {
-  id: number;
+  id?: number;
+  _id?: string;
   name: string;
   description: string;
   image: string;
-  price: string;
+  price?: string;
+  priceInEth?: number;
   category: string;
-  status: string;
-  tokenId: string;
-  contractAddress: string;
-  creator: string;
+  status?: string;
+  tokenId?: string;
+  contractAddress?: string;
+  creator?: string;
   owner: string;
-  createdAt: string;
+  quantity?: number;
+  createdAt?: string;
   attributes: ProductAttribute[];
-  ownershipHistory: ProductOwnershipRecord[];
+  ownershipHistory?: ProductOwnershipRecord[];
 }
 
 interface ProductAttribute {
@@ -61,72 +70,9 @@ export default function ConsumerDashboard() {
   // Sample user data
   const userWallet = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045";
   
-
+  const router = useRouter();
   // Sample NFTs data - in a real app these would be fetched from an API
-  const sampleNFTs = [
-    {
-      id: 2,
-      name: "Limited Edition Designer Watch",
-      description: "Exclusive timepiece with blockchain verification. Each watch comes with a unique serial number etched on the back, recorded on the blockchain for permanent authenticity verification.",
-      image: "https://i.pinimg.com/736x/24/e4/4e/24e44e404db29926a77962f50b85b4a8.jpg",
-      price: "0.85",
-      category: "luxury",
-      status: "Available",
-      tokenId: "24601",
-      contractAddress: "0x1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b",
-      creator: "0x821aea9a577a9b44299b9c15c88cf3087f3b5544",
-      owner: "0x7F74A2Cd60F37d69B4B4E5c6a8B15a485D34f616",
-      createdAt: "2025-02-15T14:30:00Z",
-      attributes: [
-        { trait_type: "Material", value: "Stainless Steel" },
-        { trait_type: "Movement", value: "Automatic" },
-        { trait_type: "Water Resistance", value: "100m" },
-        { trait_type: "Crystal", value: "Sapphire" },
-        { trait_type: "Limited", value: "Yes" },
-        { trait_type: "Edition", value: "25/100" }
-      ],
-      ownershipHistory: [
-        {
-          address: "0x7F74A2Cd60F37d69B4B4E5c6a8B15a485D34f616",
-          timestamp: "2025-03-05T16:22:45Z",
-          txHash: "0x3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4"
-        },
-        {
-          address: "0x821aea9a577a9b44299b9c15c88cf3087f3b5544",
-          timestamp: "2025-02-15T14:30:00Z",
-          txHash: "0x5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6"
-        }
-      ]
-    },
-    {
-      id: 3,
-      name: "Premium Leather Handbag",
-      description: "Handcrafted luxury leather handbag with unique serial number. Blockchain authenticated to guarantee authenticity and origin.",
-      image: "https://i.pinimg.com/736x/ed/b8/5d/edb85df7d4158b0a29deea62a05c9c35.jpg",
-      price: "0.65",
-      category: "fashion",
-      status: "Available",
-      tokenId: "34578",
-      contractAddress: "0x2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c",
-      creator: "0x821aea9a577a9b44299b9c15c88cf3087f3b5544",
-      owner: "0x821aea9a577a9b44299b9c15c88cf3087f3b5544",
-      createdAt: "2025-03-02T10:15:00Z",
-      attributes: [
-        { trait_type: "Material", value: "Full Grain Leather" },
-        { trait_type: "Hardware", value: "Gold Plated" },
-        { trait_type: "Color", value: "Midnight Black" },
-        { trait_type: "Limited", value: "Yes" },
-        { trait_type: "Edition", value: "10/50" }
-      ],
-      ownershipHistory: [
-        {
-          address: "0x821aea9a577a9b44299b9c15c88cf3087f3b5544",
-          timestamp: "2025-03-02T10:15:00Z",
-          txHash: "0x7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c"
-        }
-      ]
-    }
-  ];
+
 
   // Sample owned NFTs - in a real app these would be fetched based on the user's wallet
   const ownedNFTs = [
@@ -155,6 +101,7 @@ export default function ConsumerDashboard() {
 
   // Format date for display
   const formatDate = (dateString: string): string => {
+    if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
@@ -164,35 +111,83 @@ export default function ConsumerDashboard() {
 
   // Format time for display
   const formatTime = (dateString: string): string => {
+    if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit'
     });
   };
 
+  // Process API response to match our NFT interface
+  const processAPIResponse = (data: any): NFT => {
+    return {
+      _id: data._id || '',
+      name: data.name || '',
+      description: data.description || '',
+      image: data.image || '',
+      priceInEth: data.priceInEth || 0,
+      category: data.category || 'unknown',
+      owner: data.owner || '',
+      attributes: data.attributes || [],
+      // Add default values for UI elements that expect them
+      status: 'Available',
+      createdAt: new Date().toISOString(),
+      ownershipHistory: [
+        {
+          address: data.owner || '',
+          timestamp: new Date().toISOString(),
+          txHash: '0x' + Math.random().toString(16).substring(2, 34)
+        }
+      ]
+    };
+  };
+  const dispatch = useDispatch();
+
+  const handleLogout = () => {
+    // Clear Redux state
+    dispatch(clearUserMetaData());
+    dispatch(clearRole());
+    
+    // Also clear any additional sessionStorage items if needed
+    if (typeof window !== 'undefined') {
+      sessionStorage.clear(); // This clears all sessionStorage items
+    }
+    
+    // Show success message
+    toast.success("Logged out successfully");
+    
+    // Redirect to home page
+    router.push('/');
+  };
+
   // Search for NFT by ID
   const handleSearch = async() => {
     setIsSearching(true);
-   try {
-    const response = await fetch("/api/searchNFT", {
-     method: "POST",
-     headers: {
-       "Content-Type": "application/json"
-     },
-     body: JSON.stringify({ tokenId: searchQuery })
-    })
-    const data = await response.json();
-    console.log("Data: ", data);
-     setSearchResult(data);
-     setIsSearching(false);
-     setSearchQuery("");
-   }
-   catch (error) {
-    console.error("Error fetching NFT data:", error);
-    setIsSearching(false);
-    setSearchResult(null);
-   }
+    try {
+      const response = await fetch("/api/searchNFT", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ tokenId: searchQuery })
+      });
+      
+      const data = await response.json();
+      console.log("Data: ", data);
+      
+      // Process the API response to match our NFT interface
+      const processedData = processAPIResponse(data);
+      setSearchResult(processedData);
+      setIsSearching(false);
+      setSearchQuery("");
+    }
+    catch (error) {
+      console.error("Error fetching NFT data:", error);
+      setIsSearching(false);
+      setSearchResult(null);
+    }
   };
+  
   useEffect(() => {
     console.log("Search Result changed:", searchResult);
   }, [searchResult]);
@@ -200,6 +195,9 @@ export default function ConsumerDashboard() {
   return (
     <div className="min-h-screen pt-30 bg-gradient-to-b from-black via-gray-900 to-gray-950 text-white">
       {/* Header */}
+      <div className="fixed text-2xl cursor-pointer top-0 right-0 p-4 z-50 bg-gray-900/80 backdrop-blur-sm rounded-bl-xl rounded-tr-xl shadow-lg flex items-center gap-2">
+            <IoIosLogOut onClick={handleLogout}/>
+            </div>
       <header className="py-6 px-4 sm:px-6 lg:px-8 border-b border-white/10">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-center">
           <div className="mb-4 sm:mb-0">
@@ -295,12 +293,12 @@ export default function ConsumerDashboard() {
                 <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500">{searchResult.name}</h1>
                 <div className="flex items-center mt-2 text-gray-400 text-sm">
                   <span className="border border-purple-500/30 bg-purple-500/10 text-purple-400 rounded-full px-2 py-0.5 text-xs font-medium">
-                    NFT #{searchResult.tokenId}
+                    NFT #{searchResult._id ? searchResult._id.substring(0, 8) : ''}
                   </span>
                   <span className="mx-2">•</span>
                   <span>{searchResult?.category?.charAt(0).toUpperCase() + searchResult.category.slice(1)}</span>
                   <span className="mx-2">•</span>
-                  <Clock className="h-4 w-4 mr-1" /> {formatDate(searchResult.createdAt)}
+                  <Clock className="h-4 w-4 mr-1" /> {formatDate(searchResult.createdAt || '')}
                 </div>
               </div>
 
@@ -309,7 +307,7 @@ export default function ConsumerDashboard() {
                   <div>
                     <p className="text-sm text-gray-400">Price</p>
                     <div className="flex items-center">
-                      <span className="text-2xl font-bold text-white">{searchResult.price} ETH</span>
+                      <span className="text-2xl font-bold text-white">{searchResult.priceInEth || searchResult.price} ETH</span>
                     </div>
                   </div>
                   <Button 
@@ -325,17 +323,26 @@ export default function ConsumerDashboard() {
                 <p className="text-gray-300">{searchResult.description}</p>
               </div>
 
-              <div>
-                <h2 className="text-xl font-semibold mb-3">Attributes</h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {searchResult.attributes.map((attr, index) => (
-                    <div key={index} className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-3">
-                      <p className="text-xs text-gray-400">{attr.trait_type}</p>
-                      <p className="text-sm font-medium text-white mt-1">{attr.value}</p>
-                    </div>
-                  ))}
+              {searchResult.attributes && searchResult.attributes.length > 0 && (
+                <div>
+                  <h2 className="text-xl font-semibold mb-3">Attributes</h2>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {searchResult.attributes.map((attr, index) => (
+                      <div key={index} className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-3">
+                        <p className="text-xs text-gray-400">{attr.trait_type}</p>
+                        <p className="text-sm font-medium text-white mt-1">{attr.value}</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {searchResult.quantity && (
+                <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-3">
+                  <p className="text-xs text-gray-400">Quantity</p>
+                  <p className="text-sm font-medium text-white mt-1">{searchResult.quantity}</p>
+                </div>
+              )}
 
               <Button
                 className="bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 text-white px-6 py-2 rounded-lg shadow-lg flex items-center justify-center w-full"
@@ -352,15 +359,17 @@ export default function ConsumerDashboard() {
                 </h2>
                 
                 <div className="space-y-4">
-                  <div className="flex items-center">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-400 to-teal-500 mr-3 flex items-center justify-center">
-                      <CheckCircle className="h-4 w-4 text-white" />
+                  {searchResult.creator && (
+                    <div className="flex items-center">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-400 to-teal-500 mr-3 flex items-center justify-center">
+                        <CheckCircle className="h-4 w-4 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-400">Creator</p>
+                        <p className="text-white font-medium">{formatAddress(searchResult.creator)}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm text-gray-400">Creator</p>
-                      <p className="text-white font-medium">{formatAddress(searchResult.creator)}</p>
-                    </div>
-                  </div>
+                  )}
                   
                   <div className="flex items-center">
                     <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-400 to-pink-500 mr-3 flex items-center justify-center">
@@ -385,208 +394,9 @@ export default function ConsumerDashboard() {
       </div>
 
       {/* Modern Ownership History Modal */}
-      {showHistoryModal && searchResult && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-          <div className="bg-gray-900 border border-white/10 rounded-2xl p-0 max-w-2xl w-full shadow-2xl">
-            {/* Header */}
-            <div className="p-6 border-b border-white/10 flex justify-between items-center">
-              <div className="flex items-center space-x-3">
-                <div className="p-2 bg-blue-500/20 rounded-lg text-blue-400">
-                  <History className="h-5 w-5" />
-                </div>
-                <h2 className="text-xl font-bold">Ownership History</h2>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="rounded-full hover:bg-white/10"
-                onClick={() => setShowHistoryModal(false)}
-              >
-                <X className="h-5 w-5" />
-              </Button>
-            </div>
-            
-            {/* Search */}
-            <div className="p-6 border-b border-white/10">
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Search className="h-4 w-4 text-gray-400" />
-                </div>
-                <input
-                  type="text"
-                  placeholder="Search transactions or addresses..."
-                  className="w-full bg-white/5 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-            </div>
-            
-            {/* Content */}
-            <div className="p-6 max-h-96 overflow-y-auto">
-              <div className="space-y-6">
-                {searchResult.ownershipHistory.map((record, index) => (
-                  <div key={index} className="relative pl-8">
-                    {/* Timeline connector */}
-                    {index !== searchResult.ownershipHistory.length - 1 && (
-                      <div className="absolute top-8 bottom-0 left-4 w-0.5 bg-white/10"></div>
-                    )}
-                    
-                    {/* Event marker */}
-                    <div className={`absolute top-2 left-0 w-8 h-8 rounded-full flex items-center justify-center ${
-                      index === 0 ? 'bg-gradient-to-r from-green-400 to-emerald-500' : 'bg-white/10'
-                    }`}>
-                      {index === 0 ? (
-                        <CheckCircle className="h-4 w-4 text-white" />
-                      ) : (
-                        <User className="h-4 w-4 text-gray-400" />
-                      )}
-                    </div>
-                    
-                    {/* Content */}
-                    <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4">
-                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-3">
-                        <div className="flex items-center mb-2 sm:mb-0">
-                          <span className="font-medium text-white">{formatAddress(record.address)}</span>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="ml-1 p-1 h-auto text-blue-400 hover:text-blue-300"
-                          >
-                            <ArrowUpRight className="h-3 w-3" />
-                          </Button>
-                        </div>
-                        <div className="flex items-center text-sm text-gray-400">
-                          <Calendar className="h-3 w-3 mr-1" />
-                          {formatDate(record.timestamp)} at {formatTime(record.timestamp)}
-                        </div>
-                      </div>
-                      
-                      <div className="text-sm">
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-400">Transaction</span>
-                          <span className="text-blue-400 font-mono text-xs truncate max-w-xs">{record.txHash}</span>
-                        </div>
-                        <div className="mt-2 flex justify-between items-center">
-                          <span className="text-gray-400">Event</span>
-                          <span className="text-white">
-                            {index === 0 ? "Current Owner" : index === searchResult.ownershipHistory.length - 1 ? "Initial Minting" : "Transfer"}
-                          </span>
-                        </div>
-                      </div>
-                      
-                      {index === 0 && (
-                        <div className="mt-2 text-xs px-2 py-1 bg-green-500/20 text-green-400 rounded-md inline-block">
-                          Current Owner
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            
-            {/* Footer */}
-            <div className="p-4 border-t border-white/10 flex justify-end">
-              <Button
-                variant="outline"
-                className="border border-white/20 bg-white/5 backdrop-blur-sm text-white hover:bg-white/10"
-                onClick={() => setShowHistoryModal(false)}
-              >
-                Close
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      
 
       {/* My Collection Modal */}
-      {showOwnedNFTsModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-          <div className="bg-gray-900 border border-white/10 rounded-2xl p-0 max-w-5xl w-full shadow-2xl">
-            {/* Header */}
-            <div className="p-6 border-b border-white/10 flex justify-between items-center">
-              <div className="flex items-center space-x-3">
-                <div className="p-2 bg-purple-500/20 rounded-lg text-purple-400">
-                  <ShoppingBag className="h-5 w-5" />
-                </div>
-                <h2 className="text-xl font-bold">My NFT Collection</h2>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="rounded-full hover:bg-white/10"
-                onClick={() => setShowOwnedNFTsModal(false)}
-              >
-                <X className="h-5 w-5" />
-              </Button>
-            </div>
-            
-            {/* Filters & Search */}
-            <div className="p-6 border-b border-white/10 flex flex-col md:flex-row gap-4 justify-between">
-              <div className="relative flex-grow">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Search className="h-4 w-4 text-gray-400" />
-                </div>
-                <input
-                  type="text"
-                  placeholder="Search your collection..."
-                  className="w-full bg-white/5 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-white text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                />
-              </div>
-              <Button
-                variant="outline"
-                className="border border-white/20 bg-white/5 backdrop-blur-sm text-white hover:bg-white/10 flex items-center"
-              >
-                <Filter className="h-4 w-4 mr-2" /> Filter
-              </Button>
-            </div>
-            
-            {/* Content */}
-            <div className="p-6 max-h-96 overflow-y-auto">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {ownedNFTs.map((nft) => (
-                  <div key={nft.id} className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl overflow-hidden hover:border-purple-500/50 transition-all duration-300">
-                    <div className="relative h-48">
-                      <Image 
-                        src={nft.image} 
-                        alt={nft.name}
-                        layout="fill"
-                        objectFit="cover"
-                      />
-                      <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-sm text-xs font-medium py-1 px-2 rounded-full">
-                        {nft.status}
-                      </div>
-                    </div>
-                    <div className="p-4">
-                      <h3 className="font-medium text-lg mb-2">{nft.name}</h3>
-                      <div className="flex justify-between items-center">
-                        <p className="text-gray-400 text-sm">#{nft.tokenId}</p>
-                        <p className="text-purple-400 font-medium">{nft.price} ETH</p>
-                      </div>
-                      <Button
-                        className="w-full mt-3 bg-white/5 backdrop-blur-sm border border-white/20 hover:bg-white/10 text-white flex items-center justify-center"
-                        variant="outline"
-                      >
-                        View Details <ChevronRight className="h-4 w-4 ml-1" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            
-            {/* Footer */}
-            <div className="p-4 border-t border-white/10 flex justify-end">
-              <Button
-                variant="outline"
-                className="border border-white/20 bg-white/5 backdrop-blur-sm text-white hover:bg-white/10"
-                onClick={() => setShowOwnedNFTsModal(false)}
-              >
-                Close
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+      </div>
+  )
 }

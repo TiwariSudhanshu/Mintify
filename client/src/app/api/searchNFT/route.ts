@@ -19,7 +19,7 @@ export async function POST(req: Request) {
             console.error("Product not found in database: ", productName);
             return NextResponse.json({ error: "Product not found in database" }, { status: 404 });
         }
-        console.log("ProductInfo: ", ProductInfo);
+        // console.log("ProductInfo: ", ProductInfo);
 
 
         return NextResponse.json(ProductInfo, { status: 200 });
