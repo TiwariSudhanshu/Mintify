@@ -201,3 +201,23 @@
 //       </div>
 //     </div>
 //   )}
+
+
+const ownedNFTs = [
+    {
+      id: 1,
+      name: "Signature Wine Collection",
+      image: "/api/placeholder/400/400",
+      tokenId: "12345",
+      price: "1.2",
+      status: "Owned"
+    },
+    {
+      id: 4,
+      name: "Limited Edition Sneakers",
+      image: "/api/placeholder/400/400",
+      tokenId: "45678",
+      price: "0.45",
+      status: "Owned"
+    }
+  ];

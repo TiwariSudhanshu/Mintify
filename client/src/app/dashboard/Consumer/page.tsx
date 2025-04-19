@@ -66,33 +66,30 @@ export default function ConsumerDashboard() {
   const [showHistoryModal, setShowHistoryModal] = useState<boolean>(false);
   const [showOwnedNFTsModal, setShowOwnedNFTsModal] = useState<boolean>(false);
   const [isSearching, setIsSearching] = useState<boolean>(false);
-
-  // Sample user data
-  const userWallet = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045";
+  const [tokenId, setTokenId] = useState<string>("");
+  const [history, setHistory] = useState<string[]>([]);
   
   const router = useRouter();
-  // Sample NFTs data - in a real app these would be fetched from an API
-
-
-  // Sample owned NFTs - in a real app these would be fetched based on the user's wallet
-  const ownedNFTs = [
-    {
-      id: 1,
-      name: "Signature Wine Collection",
-      image: "/api/placeholder/400/400",
-      tokenId: "12345",
-      price: "1.2",
-      status: "Owned"
-    },
-    {
-      id: 4,
-      name: "Limited Edition Sneakers",
-      image: "/api/placeholder/400/400",
-      tokenId: "45678",
-      price: "0.45",
-      status: "Owned"
+  const handleGetOwnershipHistory = async (tokenId: string) => {
+    try {
+      const response = await fetch("/api/getHistory", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ tokenId })
+      });
+      
+      const data = await response.json();
+      console.log("Ownership History Data: ", data.history);
+      setHistory(data.history);
     }
-  ];
+    catch (error) {
+      console.error("Error fetching ownership history:", error);
+    }
+  };
+
+
 
   // Format address for display
   const formatAddress = (address: string): string => {
@@ -177,6 +174,7 @@ export default function ConsumerDashboard() {
       
       // Process the API response to match our NFT interface
       const processedData = processAPIResponse(data);
+      setTokenId(searchQuery);
       setSearchResult(processedData);
       setIsSearching(false);
       setSearchQuery("");
@@ -190,6 +188,8 @@ export default function ConsumerDashboard() {
   
   useEffect(() => {
     console.log("Search Result changed:", searchResult);
+    console.log("Token ID changed:", tokenId);
+    handleGetOwnershipHistory(tokenId);
   }, [searchResult]);
 
   return (
@@ -394,7 +394,102 @@ export default function ConsumerDashboard() {
       </div>
 
       {/* Modern Ownership History Modal */}
-      
+      {showHistoryModal && history && history.length > 0 && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+    <div className="bg-gray-900 border border-white/10 rounded-2xl p-0 max-w-2xl w-full shadow-2xl">
+      {/* Header */}
+      <div className="p-6 border-b border-white/10 flex justify-between items-center">
+        <div className="flex items-center space-x-3">
+          <div className="p-2 bg-blue-500/20 rounded-lg text-blue-400">
+            <History className="h-5 w-5" />
+          </div>
+          <h2 className="text-xl font-bold">Ownership History</h2>
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="rounded-full hover:bg-white/10"
+          onClick={() => setShowHistoryModal(false)}
+        >
+          <X className="h-5 w-5" />
+        </Button>
+      </div>
+
+      {/* Search */}
+      <div className="p-6 border-b border-white/10">
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Search className="h-4 w-4 text-gray-400" />
+          </div>
+          <input
+            type="text"
+            placeholder="Search transactions or addresses..."
+            className="w-full bg-white/5 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="p-6 max-h-96 overflow-y-auto">
+        <div className="space-y-6">
+          {history.map((entry, index) => (
+            <div key={index} className="relative pl-8">
+              {/* Event marker */}
+              <div
+                className={`absolute top-2 left-0 w-8 h-8 rounded-full flex items-center justify-center ${
+                  index === 0
+                    ? 'bg-gradient-to-r from-green-400 to-emerald-500'
+                    : 'bg-white/10'
+                }`}
+              >
+                {index === 0 ? (
+                  <CheckCircle className="h-4 w-4 text-white" />
+                ) : (
+                  <User className="h-4 w-4 text-gray-400" />
+                )}
+              </div>
+
+              {/* Content */}
+              <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-medium text-white truncate max-w-xs">
+                    {entry}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="p-1 h-auto text-blue-400 hover:text-blue-300"
+                    onClick={() => navigator.clipboard.writeText(entry)}
+                  >
+                    <ArrowUpRight className="h-3 w-3" />
+                  </Button>
+                </div>
+
+                {index === 0 && (
+                  <div className="mt-2 text-xs px-2 py-1 bg-green-500/20 text-green-400 rounded-md inline-block">
+                    Current Owner
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="p-4 border-t border-white/10 flex justify-end">
+        <Button
+          variant="outline"
+          className="border border-white/20 bg-white/5 backdrop-blur-sm text-white hover:bg-white/10"
+          onClick={() => setShowHistoryModal(false)}
+        >
+          Close
+        </Button>
+      </div>
+    </div>
+  </div>
+)}
+
 
       {/* My Collection Modal */}
       </div>
