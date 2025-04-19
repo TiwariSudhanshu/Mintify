@@ -94,24 +94,7 @@ export async function POST(req: Request) {
     console.log("Creating product in database...");
     let product;
 
-    try {
-      product = await Product.create({
-        name,
-        description,
-        priceInEth: price,
-        image: imageUrl,
-        owner: recipient.toLowerCase(),
-        category,
-        quantity: parseInt(quantity) || 1
-      });
-    } catch (e) {
-      console.error("Error creating product in database: ", e);
-      return NextResponse.json({ error: "Error creating product in database" }, { status: 500 });
-    }
-
-    if (!product) {
-      return NextResponse.json({ error: "Failed to create product" }, { status: 500 });
-    }
+   
 
     console.log("Product created in database: ", product);
 
@@ -149,7 +132,25 @@ export async function POST(req: Request) {
     }
 
     console.log("NFT Minted with token ID: ", tokenId);
+    try {
+      product = await Product.create({
+        name,
+        description,
+        priceInEth: price,
+        image: imageUrl,
+        tokenId,
+        owner: recipient.toLowerCase(),
+        category,
+        quantity: parseInt(quantity) || 1
+      });
+    } catch (e) {
+      console.error("Error creating product in database: ", e);
+      return NextResponse.json({ error: "Error creating product in database" }, { status: 500 });
+    }
 
+    if (!product) {
+      return NextResponse.json({ error: "Failed to create product" }, { status: 500 });
+    }
     return NextResponse.json({
       message: "NFT Minted successfully",
       transactionHash: tx.hash,

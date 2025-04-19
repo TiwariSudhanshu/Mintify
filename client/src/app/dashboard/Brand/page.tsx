@@ -20,6 +20,7 @@ interface Product {
   priceInEth?: number;
   image?: string;
   status?: string;
+  tokenId: string;
 }
 
 
@@ -85,7 +86,8 @@ export function BrandDashboard() {
 
   const openDetails = (product: Product) => {
     setSelectedProduct(product);
-    setIsDetailsModalOpen(true);
+    // setIsDetailsModalOpen(true);
+    router.push(`/product/${product.tokenId}`);
   };
 
   return (

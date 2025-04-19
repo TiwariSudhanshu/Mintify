@@ -7,7 +7,6 @@ export async function POST(req: Request) {
     console.log("Connected to DB");
     const {tokenId} = await req.json();
 
-
     console.log("Token ID: ", tokenId);
     try{
         const [metaData, owner] = await contract.getProductDetails(tokenId);
@@ -20,9 +19,8 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Product not found in database" }, { status: 404 });
         }
         // console.log("ProductInfo: ", ProductInfo);
-
-
-        return NextResponse.json(ProductInfo, { status: 200 });
+        return NextResponse.json({
+            ProductInfo});
 
     } catch (error) {
         console.error("Error fetching NFT details: ", error);

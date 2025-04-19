@@ -1,27 +1,42 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 import Image from "next/image";
-import { Button } from "@/components/ui/button";
+import { useParams } from "next/navigation";
 import { 
-  ArrowLeft, 
-  Clock, 
   Heart, 
   Share2, 
   History, 
-  Send, 
+  ShoppingCart, 
   CheckCircle, 
   X,
-  Search,
-  ExternalLink, 
-  AlignJustify,
-  Calendar,
   User,
-  ArrowUpRight
+  ExternalLink,
+  Clock
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 // Define TypeScript interfaces
+interface NFT {
+  id?: number;
+  _id?: string;
+  name: string;
+  description: string;
+  image: string;
+  price?: string;
+  priceInEth?: number;
+  category: string;
+  status?: string;
+  tokenId?: string;
+  contractAddress?: string;
+  creator?: string;
+  owner: string;
+  quantity?: number;
+  createdAt?: string;
+  attributes: ProductAttribute[];
+  ownershipHistory?: ProductOwnershipRecord[];
+}
+
 interface ProductAttribute {
   trait_type: string;
   value: string;
@@ -33,57 +48,15 @@ interface ProductOwnershipRecord {
   txHash: string;
 }
 
-interface ProductParams {
-  params: {
-    id: string;
-  };
-}
-
-export default function Product({ params }: ProductParams) {
-  const router = useRouter();
+export default function NFTDetailPage() {
+  const params = useParams();
+  const tokenId = params.id as string;
+  
+  const [nft, setNft] = useState<NFT | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const [showHistoryModal, setShowHistoryModal] = useState<boolean>(false);
-  const [showTransferModal, setShowTransferModal] = useState<boolean>(false);
-
-  // Sample product data - in a real app this would be fetched based on the ID
-  const product = {
-    id: 2,
-    name: "Limited Edition Designer Watch",
-    description: "Exclusive timepiece with blockchain verification. Each watch comes with a unique serial number etched on the back, recorded on the blockchain for permanent authenticity verification.",
-    image: "https://i.pinimg.com/736x/24/e4/4e/24e44e404db29926a77962f50b85b4a8.jpg",
-    price: "0.85",
-    category: "luxury",
-    status: "Active",
-    tokenId: "24601",
-    contractAddress: "0x1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b",
-    creator: "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
-    owner: "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
-    createdAt: "2025-02-15T14:30:00Z",
-    attributes: [
-      { trait_type: "Material", value: "Stainless Steel" },
-      { trait_type: "Movement", value: "Automatic" },
-      { trait_type: "Water Resistance", value: "100m" },
-      { trait_type: "Crystal", value: "Sapphire" },
-      { trait_type: "Limited", value: "Yes" },
-      { trait_type: "Edition", value: "25/100" }
-    ],
-    ownershipHistory: [
-      {
-        address: "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
-        timestamp: "2025-04-10T09:15:30Z",
-        txHash: "0x1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b"
-      },
-      {
-        address: "0x7F74A2Cd60F37d69B4B4E5c6a8B15a485D34f616",
-        timestamp: "2025-03-05T16:22:45Z",
-        txHash: "0x3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4"
-      },
-      {
-        address: "0x821aea9a577a9b44299b9c15c88cf3087f3b5544",
-        timestamp: "2025-02-15T14:30:00Z",
-        txHash: "0x5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6"
-      }
-    ]
-  };
+  const [history, setHistory] = useState<string[]>([]);
 
   // Format address for display
   const formatAddress = (address: string): string => {
@@ -92,6 +65,7 @@ export default function Product({ params }: ProductParams) {
 
   // Format date for display
   const formatDate = (dateString: string): string => {
+    if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
@@ -99,45 +73,141 @@ export default function Product({ params }: ProductParams) {
     });
   };
 
-  // Format time for display
-  const formatTime = (dateString: string): string => {
-    return new Date(dateString).toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+  // Process API response to match our NFT interface
+  const processAPIResponse = (data: any): NFT => {
+    return {
+      _id: data._id || '',
+      name: data.name || '',
+      description: data.description || '',
+      image: data.image || '',
+      priceInEth: data.priceInEth || 0,
+      category: data.category || 'unknown',
+      owner: data.owner || '',
+      attributes: data.attributes || [],
+      // Add default values for UI elements that expect them
+      status: 'Available',
+      createdAt: new Date().toISOString(),
+      ownershipHistory: [
+        {
+          address: data.owner || '',
+          timestamp: new Date().toISOString(),
+          txHash: '0x' + Math.random().toString(16).substring(2, 34)
+        }
+      ]
+    };
   };
 
+  const handleGetOwnershipHistory = async (id: string) => {
+    try {
+      const response = await fetch("/api/getHistory", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ tokenId: id })
+      });
+      
+      const data = await response.json();
+      console.log("Ownership History Data: ", data.history);
+      setHistory(data.history);
+    }
+    catch (error) {
+      console.error("Error fetching ownership history:", error);
+    }
+  };
+
+  // Fetch NFT data when component mounts
+  useEffect(() => {
+    const fetchNFTData = async () => {
+      // if (!tokenId) return;
+      console.log("Fetching NFT data for tokenId: ", tokenId);
+      setLoading(true);
+      try {
+        const response = await fetch("/api/searchNFT", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ tokenId })
+        });
+        
+        if (!response.ok) {
+          throw new Error("Failed to fetch NFT data");
+        }
+        
+        const data = await response.json();
+        console.log("NFT Data: ", data);
+        const productInfo = data.ProductInfo;
+        // Process the API response to match our NFT interface
+        const processedData = processAPIResponse(productInfo);
+        setNft(processedData);
+        
+        // Fetch ownership history
+        handleGetOwnershipHistory(tokenId);
+      }
+      catch (error) {
+        console.error("Error fetching NFT data:", error);
+        setError("Failed to load NFT data. Please try again later.");
+      }
+      finally {
+        setLoading(false);
+      }
+    };
+
+    fetchNFTData();
+  }, [tokenId]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen pt-30 bg-gradient-to-b from-black via-gray-900 to-gray-950 text-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-t-purple-500 border-white/20 rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-300">Loading NFT details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !nft) {
+    return (
+      <div className="min-h-screen pt-30 bg-gradient-to-b from-black via-gray-900 to-gray-950 text-white flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-6 bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl">
+          <X className="h-12 w-12 text-red-400 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold mb-2">NFT Not Found</h2>
+          <p className="text-gray-300">{error || "This NFT does not exist or could not be loaded."}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-black via-gray-900 to-gray-950 text-white">
+    <div className="min-h-screen pt-30 bg-gradient-to-b from-black via-gray-900 to-gray-950 text-white">
       {/* Header */}
-      <header className="py-6 px-4 sm:px-6 lg:px-8">
+      <header className="py-6 px-4 sm:px-6 lg:px-8 border-b border-white/10">
         <div className="max-w-7xl mx-auto">
-          <Button
-            variant="ghost"
-            className="text-gray-400 hover:text-white mb-4 flex items-center"
-            onClick={() => router.back()}
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Dashboard
-          </Button>
+          <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500">
+            NFT Marketplace
+          </h1>
+          <p className="text-gray-400">Discover, collect, and authenticate luxury items</p>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* NFT Details */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
           {/* Left Column - Product Image */}
           <div>
             <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4 overflow-hidden">
               <div className="relative aspect-square">
                 <Image 
-                  src={product.image} 
-                  alt={product.name}
+                  src={nft.image} 
+                  alt={nft.name}
                   layout="fill"
                   objectFit="cover"
                   className="rounded-lg"
                 />
                 <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-sm text-xs font-medium py-1 px-2 rounded-full">
-                  {product.status}
+                  {nft.status}
                 </div>
               </div>
             </div>
@@ -160,85 +230,101 @@ export default function Product({ params }: ProductParams) {
           {/* Right Column - Product Details */}
           <div className="space-y-6">
             <div>
-              <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500">{product.name}</h1>
+              <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500">{nft.name}</h1>
               <div className="flex items-center mt-2 text-gray-400 text-sm">
                 <span className="border border-purple-500/30 bg-purple-500/10 text-purple-400 rounded-full px-2 py-0.5 text-xs font-medium">
-                  NFT #{product.tokenId}
+                  NFT #{nft._id ? nft._id.substring(0, 8) : ''}
                 </span>
                 <span className="mx-2">•</span>
-                <span>{product.category.charAt(0).toUpperCase() + product.category.slice(1)}</span>
+                <span>{nft?.category?.charAt(0).toUpperCase() + nft.category.slice(1)}</span>
                 <span className="mx-2">•</span>
-                <Clock className="h-4 w-4 mr-1" /> {formatDate(product.createdAt)}
+                <Clock className="h-4 w-4 mr-1" /> {formatDate(nft.createdAt || '')}
               </div>
             </div>
 
             <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6">
               <div className="flex justify-between items-center">
                 <div>
-                  <p className="text-sm text-gray-400">Asset Value</p>
+                  <p className="text-sm text-gray-400">Price</p>
                   <div className="flex items-center">
-                    <span className="text-2xl font-bold text-white">{product.price} ETH</span>
+                    <span className="text-2xl font-bold text-white">{nft.priceInEth || nft.price} ETH</span>
                   </div>
                 </div>
-                <div className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-sm font-medium">
-                  Brand Asset
-                </div>
+                <Button 
+                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-6 py-2 rounded-lg shadow-lg flex items-center"
+                >
+                  <ShoppingCart className="mr-2 h-5 w-5" /> Buy Now
+                </Button>
               </div>
             </div>
 
             <div>
               <h2 className="text-xl font-semibold mb-3">Description</h2>
-              <p className="text-gray-300">{product.description}</p>
+              <p className="text-gray-300">{nft.description}</p>
             </div>
 
-            <div>
-              <h2 className="text-xl font-semibold mb-3">Attributes</h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {product.attributes.map((attr, index) => (
-                  <div key={index} className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-3">
-                    <p className="text-xs text-gray-400">{attr.trait_type}</p>
-                    <p className="text-sm font-medium text-white mt-1">{attr.value}</p>
-                  </div>
-                ))}
+            {nft.attributes && nft.attributes.length > 0 && (
+              <div>
+                <h2 className="text-xl font-semibold mb-3">Attributes</h2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {nft.attributes.map((attr, index) => (
+                    <div key={index} className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-3">
+                      <p className="text-xs text-gray-400">{attr.trait_type}</p>
+                      <p className="text-sm font-medium text-white mt-1">{attr.value}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
-            <div className="flex flex-col sm:flex-row gap-4">
-              <Button
-                className="bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 text-white px-6 py-2 rounded-lg shadow-lg flex items-center justify-center flex-1"
-                size="lg"
-                onClick={() => setShowHistoryModal(true)}
-              >
-                <History className="mr-2 h-5 w-5" /> Track Ownership History
-              </Button>
-              <Button
-                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-6 py-2 rounded-lg shadow-lg flex items-center justify-center flex-1"
-                size="lg"
-                onClick={() => setShowTransferModal(true)}
-              >
-                <Send className="mr-2 h-5 w-5" /> Transfer Ownership
-              </Button>
-            </div>
+            {nft.quantity && (
+              <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-3">
+                <p className="text-xs text-gray-400">Quantity</p>
+                <p className="text-sm font-medium text-white mt-1">{nft.quantity}</p>
+              </div>
+            )}
 
-            {/* Ownership Details */}
+            <Button
+              className="bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 text-white px-6 py-2 rounded-lg shadow-lg flex items-center justify-center w-full"
+              size="lg"
+              onClick={() => setShowHistoryModal(true)}
+            >
+              <History className="mr-2 h-5 w-5" /> Track Ownership History
+            </Button>
+
+            {/* Creator & Owner Info */}
             <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-5">
               <h2 className="text-lg font-semibold mb-3">
-                Current Ownership
+                Authentication Details
               </h2>
               
-              <div className="flex items-center">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-400 to-pink-500 mr-3 flex items-center justify-center">
-                  <CheckCircle className="h-4 w-4 text-white" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-400">Current Owner</p>
-                  <p className="text-white font-medium">{formatAddress(product.owner)}</p>
+              <div className="space-y-4">
+                {nft.creator && (
+                  <div className="flex items-center">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-400 to-teal-500 mr-3 flex items-center justify-center">
+                      <CheckCircle className="h-4 w-4 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-400">Creator</p>
+                      <p className="text-white font-medium">{formatAddress(nft.creator)}</p>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="flex items-center">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-400 to-pink-500 mr-3 flex items-center justify-center">
+                    <User className="h-4 w-4 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-400">Current Owner</p>
+                    <p className="text-white font-medium">{formatAddress(nft.owner)}</p>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
-      </main>
+      </section>
 
       {/* Background Elements */}
       <div className="fixed top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
@@ -247,7 +333,7 @@ export default function Product({ params }: ProductParams) {
       </div>
 
       {/* Modern Ownership History Modal */}
-      {showHistoryModal && (
+      {showHistoryModal && history && history.length > 0 && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
           <div className="bg-gray-900 border border-white/10 rounded-2xl p-0 max-w-2xl w-full shadow-2xl">
             {/* Header */}
@@ -267,74 +353,43 @@ export default function Product({ params }: ProductParams) {
                 <X className="h-5 w-5" />
               </Button>
             </div>
-            
-            {/* Search */}
-            <div className="p-6 border-b border-white/10">
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Search className="h-4 w-4 text-gray-400" />
-                </div>
-                <input
-                  type="text"
-                  placeholder="Search transactions or addresses..."
-                  className="w-full bg-white/5 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-            </div>
-            
+
             {/* Content */}
             <div className="p-6 max-h-96 overflow-y-auto">
               <div className="space-y-6">
-                {product.ownershipHistory.map((record, index) => (
+                {history.map((entry, index) => (
                   <div key={index} className="relative pl-8">
-                    {/* Timeline connector */}
-                    {index !== product.ownershipHistory.length - 1 && (
-                      <div className="absolute top-8 bottom-0 left-4 w-0.5 bg-white/10"></div>
-                    )}
-                    
                     {/* Event marker */}
-                    <div className={`absolute top-2 left-0 w-8 h-8 rounded-full flex items-center justify-center ${
-                      index === 0 ? 'bg-gradient-to-r from-green-400 to-emerald-500' : 'bg-white/10'
-                    }`}>
+                    <div
+                      className={`absolute top-2 left-0 w-8 h-8 rounded-full flex items-center justify-center ${
+                        index === 0
+                          ? 'bg-gradient-to-r from-green-400 to-emerald-500'
+                          : 'bg-white/10'
+                      }`}
+                    >
                       {index === 0 ? (
                         <CheckCircle className="h-4 w-4 text-white" />
                       ) : (
                         <User className="h-4 w-4 text-gray-400" />
                       )}
                     </div>
-                    
+
                     {/* Content */}
                     <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4">
-                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-3">
-                        <div className="flex items-center mb-2 sm:mb-0">
-                          <span className="font-medium text-white">{formatAddress(record.address)}</span>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="ml-1 p-1 h-auto text-blue-400 hover:text-blue-300"
-                          >
-                            <ArrowUpRight className="h-3 w-3" />
-                          </Button>
-                        </div>
-                        <div className="flex items-center text-sm text-gray-400">
-                          <Calendar className="h-3 w-3 mr-1" />
-                          {formatDate(record.timestamp)} at {formatTime(record.timestamp)}
-                        </div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-medium text-white truncate max-w-xs">
+                          {entry}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="p-1 h-auto text-blue-400 hover:text-blue-300"
+                          onClick={() => navigator.clipboard.writeText(entry)}
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                        </Button>
                       </div>
-                      
-                      <div className="text-sm">
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-400">Transaction</span>
-                          <span className="text-blue-400 font-mono text-xs truncate max-w-xs">{record.txHash}</span>
-                        </div>
-                        <div className="mt-2 flex justify-between items-center">
-                          <span className="text-gray-400">Event</span>
-                          <span className="text-white">
-                            {index === 0 ? "Current Owner" : index === product.ownershipHistory.length - 1 ? "Initial Minting" : "Transfer"}
-                          </span>
-                        </div>
-                      </div>
-                      
+
                       {index === 0 && (
                         <div className="mt-2 text-xs px-2 py-1 bg-green-500/20 text-green-400 rounded-md inline-block">
                           Current Owner
@@ -345,7 +400,7 @@ export default function Product({ params }: ProductParams) {
                 ))}
               </div>
             </div>
-            
+
             {/* Footer */}
             <div className="p-4 border-t border-white/10 flex justify-end">
               <Button
@@ -354,58 +409,6 @@ export default function Product({ params }: ProductParams) {
                 onClick={() => setShowHistoryModal(false)}
               >
                 Close
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Transfer Ownership Modal */}
-      {showTransferModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="bg-gray-900 border border-white/10 rounded-xl p-6 max-w-md w-full">
-            <h2 className="text-2xl font-bold mb-4">Transfer Ownership</h2>
-            <Button
-              className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 rounded-full p-1"
-              onClick={() => setShowTransferModal(false)}
-            >
-              <X className="h-5 w-5" />
-            </Button>
-            
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-300 mb-1">
-                Recipient Wallet Address
-              </label>
-              <input
-                type="text"
-                placeholder="0x..."
-                className="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              />
-            </div>
-            
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-300 mb-1">
-                Transfer Message (Optional)
-              </label>
-              <textarea
-                placeholder="Add a message to the recipient..."
-                rows={3}
-                className="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              />
-            </div>
-            
-            <div className="flex justify-end gap-2">
-              <Button
-                variant="outline"
-                className="border border-white/20 bg-white/5 backdrop-blur-sm text-white hover:bg-white/10"
-                onClick={() => setShowTransferModal(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
-              >
-                Confirm Transfer
               </Button>
             </div>
           </div>

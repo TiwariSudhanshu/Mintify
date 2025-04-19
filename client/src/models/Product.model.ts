@@ -8,6 +8,7 @@ interface Attribute {
     name: string;
     description?: string;
     priceInEth: number;
+    tokenId?: string;
     attributes?: Attribute[];
     image?: string;
     category: string;
@@ -27,6 +28,7 @@ const ProductSchema = new Schema<ProductDocument>({
     name: { type: String, required: true },
     description: { type: String},
     priceInEth: { type: Number, required: true },
+    tokenId: { type: String, required: true },
     attributes: { type: [AttributeSchema]},
     image: { type: String },
     category: { type: String, required: true },
