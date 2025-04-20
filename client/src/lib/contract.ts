@@ -1,21 +1,19 @@
-
-import fs from 'fs';
 import { ethers } from 'ethers';
+import contractData from './MintNFT.json'; 
 
-const contractPath: string = process.env.NEXT_PUBLIC_CONTRACT_PATH!;
-const contractAddress: string = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS!;
-const rpcUrl: string = process.env.NEXT_PUBLIC_RPC_URL!;
-const privateKey: string = process.env.NEXT_PUBLIC_PRIVATE_KEY!;
-const chainId: string = process.env.NEXT_PUBLIC_CHAIN_ID!;
-const contractData = JSON.parse(fs.readFileSync(contractPath, 'utf8'));
+const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS!;
+const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL!;
+const privateKey = process.env.CONTRACT_PRIVATE_KEY!; 
+const chainId = Number(process.env.NEXT_PUBLIC_CHAIN_ID!);
+
 const contract_ABI = contractData.abi;
 
 const provider = new ethers.JsonRpcProvider(rpcUrl, {
-    name: "arbitrum-sepolia",
-    chainId: Number(chainId),
-  });
-  
-  const wallet = new ethers.Wallet(privateKey, provider);
+  name: 'arbitrum-sepolia',
+  chainId,
+});
+
+const wallet = new ethers.Wallet(privateKey, provider);
 const contract = new ethers.Contract(contractAddress, contract_ABI, wallet);
 
 export { contract, provider, wallet };
