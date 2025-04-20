@@ -1,10 +1,9 @@
-// import { NextResponse } from "next";
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { contract } from "@/lib/contract";
 import Product from "@/models/Product.model";
 import connectDB from "@/lib/connectDB";
 
-export async function GET(res: NextResponse) {
+export async function GET(req: NextRequest) {
   try {
     await connectDB();
     console.log("Connected to DB");
