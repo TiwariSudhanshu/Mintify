@@ -517,7 +517,11 @@ export default function NFTDetailPage() {
             {/* Content */}
             <div className="p-6 max-h-96 overflow-y-auto">
               <div className="space-y-6">
-                {history.map((entry, index) => (
+                {history 
+                .slice()
+                .slice(1) 
+                .reverse()
+                .map((entry, index) => (
                   <div key={index} className="relative pl-8">
                     {/* Event marker */}
                     <div
