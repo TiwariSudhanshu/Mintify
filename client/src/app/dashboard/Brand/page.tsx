@@ -24,7 +24,7 @@ interface Product {
 }
 
 
-export function BrandDashboard() {
+function BrandDashboard() {
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
