@@ -1,3 +1,6 @@
+export const runtime = 'nodejs';
+
+
 import { NextResponse, NextRequest } from "next/server";
 import { contract } from "@/lib/contract";
 import Product from "@/models/Product.model";

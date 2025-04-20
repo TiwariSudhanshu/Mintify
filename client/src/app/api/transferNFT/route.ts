@@ -1,3 +1,5 @@
+export const runtime = 'nodejs';
+
 import { NextResponse } from 'next/server';
 import { contract, wallet } from '@/lib/contract';
 import connectDB from '@/lib/connectDB';
