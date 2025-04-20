@@ -12,9 +12,11 @@ import {
   X,
   User,
   ExternalLink,
-  Clock
+  Clock,
+  SendHorizonal
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 // Define TypeScript interfaces
 interface NFT {
@@ -56,6 +58,9 @@ export default function NFTDetailPage() {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [showHistoryModal, setShowHistoryModal] = useState<boolean>(false);
+  const [showTransferModal, setShowTransferModal] = useState<boolean>(false);
+  const [transferAddress, setTransferAddress] = useState<string>("");
+  const [isTransferring, setIsTransferring] = useState<boolean>(false);
   const [history, setHistory] = useState<string[]>([]);
 
   // Format address for display
@@ -113,6 +118,51 @@ export default function NFTDetailPage() {
     }
     catch (error) {
       console.error("Error fetching ownership history:", error);
+    }
+  };
+
+  const handleTransferNFT = async () => {
+    if (!transferAddress || !transferAddress.startsWith('0x') || transferAddress.length !== 42) {
+      toast.error("Please enter a valid wallet address");
+      return;
+    }
+    
+    setIsTransferring(true);
+    try {
+      const response = await fetch("/api/transferNFT", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ 
+          tokenId: tokenId,
+          newOwner: transferAddress 
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        toast.success("NFT transferred successfully");
+        // Update the NFT data with new owner
+        if (nft) {
+          setNft({
+            ...nft,
+            owner: transferAddress
+          });
+        }
+        // Close the modal
+        setShowTransferModal(false);
+        // Refresh ownership history
+        handleGetOwnershipHistory(tokenId);
+      } else {
+        toast.error(data.message || "Failed to transfer NFT");
+      }
+    } catch (error) {
+      console.error("Error transferring NFT:", error);
+      toast.error("Failed to transfer NFT. Please try again.");
+    } finally {
+      setIsTransferring(false);
     }
   };
 
@@ -252,8 +302,9 @@ export default function NFTDetailPage() {
                 </div>
                 <Button 
                   className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-6 py-2 rounded-lg shadow-lg flex items-center"
+                  onClick={() => setShowTransferModal(true)}
                 >
-                  <ShoppingCart className="mr-2 h-5 w-5" /> Buy Now
+                  <ShoppingCart className="mr-2 h-5 w-5" /> Transfer NFT
                 </Button>
               </div>
             </div>
@@ -331,6 +382,115 @@ export default function NFTDetailPage() {
         <div className="absolute top-[-100px] right-[-100px] w-[400px] h-[400px] bg-purple-500/10 rounded-full filter blur-3xl" />
         <div className="absolute bottom-[-120px] left-[-80px] w-[500px] h-[500px] bg-blue-500/10 rounded-full filter blur-3xl" />
       </div>
+
+      {/* Transfer NFT Modal */}
+      {showTransferModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+          <div className="bg-gray-900 border border-white/10 rounded-2xl p-0 max-w-md w-full shadow-2xl">
+            {/* Header */}
+            <div className="p-6 border-b border-white/10 flex justify-between items-center">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-purple-500/20 rounded-lg text-purple-400">
+                  <SendHorizonal className="h-5 w-5" />
+                </div>
+                <h2 className="text-xl font-bold">Transfer NFT</h2>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="rounded-full hover:bg-white/10"
+                onClick={() => setShowTransferModal(false)}
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6">
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-sm text-gray-400">NFT</h3>
+                  <span className="text-xs bg-purple-500/20 text-purple-400 py-1 px-2 rounded-full">
+                    {nft._id ? `#${nft._id.substring(0, 8)}` : ''}
+                  </span>
+                </div>
+                
+                <div className="flex items-center bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-3">
+                  <div className="relative w-12 h-12 rounded-md overflow-hidden mr-3">
+                    <Image 
+                      src={nft.image} 
+                      alt={nft.name}
+                      layout="fill"
+                      objectFit="cover"
+                    />
+                  </div>
+                  <div>
+                    <p className="font-medium text-white">{nft.name}</p>
+                    <p className="text-sm text-gray-400">{nft.priceInEth || nft.price} ETH</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="mb-6">
+                <label htmlFor="recipientAddress" className="block text-sm text-gray-400 mb-2">
+                  Transfer to (Wallet Address)
+                </label>
+                <div className="relative">
+                  <input
+                    id="recipientAddress"
+                    type="text"
+                    placeholder="0x..."
+                    value={transferAddress}
+                    onChange={(e) => setTransferAddress(e.target.value)}
+                    className="w-full bg-white/5 backdrop-blur-sm border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  />
+                </div>
+                <p className="text-xs text-gray-400 mt-2">
+                  Enter the recipient's full wallet address
+                </p>
+              </div>
+              
+              <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-4 mb-6">
+                <div className="flex justify-between text-sm mb-2">
+                  <span className="text-gray-400">Current Owner</span>
+                  <span className="text-white">{formatAddress(nft.owner)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-400">Network Fee</span>
+                  <span className="text-white">0.001 ETH</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 border-t border-white/10 flex justify-between">
+              <Button
+                variant="outline"
+                className="border border-white/20 bg-white/5 backdrop-blur-sm text-white hover:bg-white/10"
+                onClick={() => setShowTransferModal(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-6 rounded-lg shadow-lg flex items-center"
+                onClick={handleTransferNFT}
+                disabled={isTransferring || !transferAddress}
+              >
+                {isTransferring ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin mr-2"></div>
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <SendHorizonal className="mr-2 h-4 w-4" /> Transfer
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modern Ownership History Modal */}
       {showHistoryModal && history && history.length > 0 && (

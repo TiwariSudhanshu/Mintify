@@ -6,12 +6,16 @@ const contractPath: string = process.env.NEXT_PUBLIC_CONTRACT_PATH!;
 const contractAddress: string = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS!;
 const rpcUrl: string = process.env.NEXT_PUBLIC_RPC_URL!;
 const privateKey: string = process.env.NEXT_PUBLIC_PRIVATE_KEY!;
-
+const chainId: string = process.env.NEXT_PUBLIC_CHAIN_ID!;
 const contractData = JSON.parse(fs.readFileSync(contractPath, 'utf8'));
 const contract_ABI = contractData.abi;
 
-const provider = new ethers.JsonRpcProvider(rpcUrl);
-const wallet = new ethers.Wallet(privateKey, provider);
+const provider = new ethers.JsonRpcProvider(rpcUrl, {
+    name: "arbitrum-sepolia",
+    chainId: Number(chainId),
+  });
+  
+  const wallet = new ethers.Wallet(privateKey, provider);
 const contract = new ethers.Contract(contractAddress, contract_ABI, wallet);
 
 export { contract, provider, wallet };

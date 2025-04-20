@@ -50,116 +50,103 @@ export async function POST(req: Request) {
   try {
     await connectDB();
     console.log("Connected to MongoDB");
-    
-    // Parse the form data including the image file
+
     const { fields, files } = await parseForm(req);
-    
-    // Extract fields (already strings, not arrays)
     const { recipient, name, description, price, quantity, category } = fields;
-    
+
     if (!recipient || !name || !price) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // Handle image upload to Cloudinary
     let imageUrl = null;
     try {
       if (files.image) {
         const imageFile = files.image;
         const imageData = await fs.readFile(imageFile.filepath);
-        
-        // Upload to Cloudinary
         const uploadRes = await cloudinary.uploader.upload(
-          `data:${imageFile.mimetype};base64,${imageData.toString('base64')}`, 
+          `data:${imageFile.mimetype};base64,${imageData.toString('base64')}`,
           { folder: 'products' }
         );
         imageUrl = uploadRes.secure_url;
-        console.log("Image uploaded to Cloudinary:", imageUrl);
-        
-        // Clean up the temp file
         await fs.unlink(imageFile.filepath);
+        console.log("Image uploaded to Cloudinary:", imageUrl);
       }
     } catch (err) {
       console.error("Cloudinary upload failed:", err);
       return NextResponse.json({ error: "Image upload failed" }, { status: 500 });
     }
 
-    // Check if product already exists
+    // Check for duplicate product
     const existingProduct = await Product.findOne({ name, owner: recipient });
     if (existingProduct) {
-      console.error("Product already exists in database: ", existingProduct);
       return NextResponse.json({ error: "Product already exists in database" }, { status: 400 });
     }
 
-    console.log("Creating product in database...");
+    // Step 1: Save product in DB without tokenId
     let product;
-
-   
-
-    console.log("Product created in database: ", product);
-
-    // Mint NFT
-    if (!recipient.startsWith("0x")) {
-      throw new Error("Recipient address is invalid or ENS is not supported on localnet");
-    }
-    
-    const productInfo = `${name} - ${price}`;
-    const parsedRecipient = getAddress(recipient);
-    const tx = await contract.mintProductNFT(parsedRecipient, productInfo);
-    console.log("Transaction sent : ", tx.hash);
-
-    const receipt = await tx.wait();
-    console.log("Full receipt: ", receipt);
-
-    // Parse logs to find tokenId
-    let tokenId: string | null = null;
-
-    for (const log of receipt.logs) {
-      try {
-        const parsedLog: any = contract.interface.parseLog(log);
-        if (parsedLog.name === "ProductMinted") {
-          tokenId = parsedLog.args.tokenId.toString();
-          break;
-        }
-      } catch (e) {
-        continue;
-      }
-    }
-
-    if (!tokenId) {
-      console.error("Token ID not found in logs");
-      return NextResponse.json({ error: "Token ID not found in logs" }, { status: 500 });
-    }
-
-    console.log("NFT Minted with token ID: ", tokenId);
     try {
       product = await Product.create({
         name,
         description,
         priceInEth: price,
         image: imageUrl,
-        tokenId,
         owner: recipient.toLowerCase(),
         category,
         quantity: parseInt(quantity) || 1
       });
+      console.log("Product saved in database (pre-mint):", product._id);
     } catch (e) {
-      console.error("Error creating product in database: ", e);
-      return NextResponse.json({ error: "Error creating product in database" }, { status: 500 });
+      console.error("Error creating product in database:", e);
+      return NextResponse.json({ error: "Database save failed, NFT not minted" }, { status: 500 });
     }
 
-    if (!product) {
-      return NextResponse.json({ error: "Failed to create product" }, { status: 500 });
+    // Step 2: Mint the NFT
+    if (!recipient.startsWith("0x")) {
+      throw new Error("Recipient address is invalid or ENS is not supported on localnet");
     }
-    return NextResponse.json({
-      message: "NFT Minted successfully",
-      transactionHash: tx.hash,
-      tokenId,
-      product
-    }, { status: 200 });
+
+    const productInfo = `${name} - ${price}`;
+    const parsedRecipient = getAddress(recipient);
+
+    let tokenId: string | null = null;
+    try {
+      const tx = await contract.mintProductNFT(parsedRecipient, productInfo);
+      const receipt = await tx.wait();
+
+      for (const log of receipt.logs) {
+        try {
+          const parsedLog: any = contract.interface.parseLog(log);
+          if (parsedLog.name === "ProductMinted") {
+            tokenId = parsedLog.args.tokenId.toString();
+            break;
+          }
+        } catch (e) {
+          continue;
+        }
+      }
+
+      if (!tokenId) throw new Error("Token ID not found in logs");
+
+      // Step 3: Update DB with tokenId
+      product.tokenId = tokenId;
+      await product.save();
+
+      return NextResponse.json({
+        message: "NFT Minted successfully",
+        transactionHash: tx.hash,
+        tokenId,
+        product
+      }, { status: 200 });
+
+    } catch (e) {
+      console.error("Error minting NFT:", e);
+      // Rollback: Delete the product since mint failed
+      await Product.findByIdAndDelete(product._id);
+      return NextResponse.json({ error: "Minting failed, product rollback done" }, { status: 500 });
+    }
 
   } catch (e) {
-    console.error("Error minting NFT: ", e);
-    return NextResponse.json({ error: "Error minting NFT" }, { status: 500 });
+    console.error("Unhandled error:", e);
+    return NextResponse.json({ error: "Unexpected server error" }, { status: 500 });
   }
 }

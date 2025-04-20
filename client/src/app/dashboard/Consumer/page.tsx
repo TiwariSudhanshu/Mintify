@@ -82,6 +82,7 @@ export default function ConsumerDashboard() {
       
       const data = await response.json();
       console.log("Ownership History Data: ", data.history);
+      
       setHistory(data.history);
     }
     catch (error) {
@@ -170,10 +171,12 @@ export default function ConsumerDashboard() {
       });
       
       const data = await response.json();
-      console.log("Data: ", data);
+      let productInfo = data.ProductInfo; 
+
       
       // Process the API response to match our NFT interface
-      const processedData = processAPIResponse(data);
+      const processedData = processAPIResponse(productInfo)
+      
       setTokenId(searchQuery);
       setSearchResult(processedData);
       setIsSearching(false);
@@ -397,7 +400,6 @@ export default function ConsumerDashboard() {
       {showHistoryModal && history && history.length > 0 && (
   <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
     <div className="bg-gray-900 border border-white/10 rounded-2xl p-0 max-w-2xl w-full shadow-2xl">
-      {/* Header */}
       <div className="p-6 border-b border-white/10 flex justify-between items-center">
         <div className="flex items-center space-x-3">
           <div className="p-2 bg-blue-500/20 rounded-lg text-blue-400">
@@ -415,7 +417,6 @@ export default function ConsumerDashboard() {
         </Button>
       </div>
 
-      {/* Search */}
       <div className="p-6 border-b border-white/10">
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -429,54 +430,54 @@ export default function ConsumerDashboard() {
         </div>
       </div>
 
-      {/* Content */}
       <div className="p-6 max-h-96 overflow-y-auto">
         <div className="space-y-6">
-          {history.map((entry, index) => (
-            <div key={index} className="relative pl-8">
-              {/* Event marker */}
-              <div
-                className={`absolute top-2 left-0 w-8 h-8 rounded-full flex items-center justify-center ${
-                  index === 0
-                    ? 'bg-gradient-to-r from-green-400 to-emerald-500'
-                    : 'bg-white/10'
-                }`}
-              >
-                {index === 0 ? (
-                  <CheckCircle className="h-4 w-4 text-white" />
-                ) : (
-                  <User className="h-4 w-4 text-gray-400" />
-                )}
-              </div>
-
-              {/* Content */}
-              <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-medium text-white truncate max-w-xs">
-                    {entry}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="p-1 h-auto text-blue-400 hover:text-blue-300"
-                    onClick={() => navigator.clipboard.writeText(entry)}
-                  >
-                    <ArrowUpRight className="h-3 w-3" />
-                  </Button>
+          {history
+            .slice()
+            .slice(1) 
+            .reverse()
+            .map((entry, index) => (
+              <div key={index} className="relative pl-8">
+                <div
+                  className={`absolute top-2 left-0 w-8 h-8 rounded-full flex items-center justify-center ${
+                    index === 0
+                      ? 'bg-gradient-to-r from-green-400 to-emerald-500'
+                      : 'bg-white/10'
+                  }`}
+                >
+                  {index === 0 ? (
+                    <CheckCircle className="h-4 w-4 text-white" />
+                  ) : (
+                    <User className="h-4 w-4 text-gray-400" />
+                  )}
                 </div>
 
-                {index === 0 && (
-                  <div className="mt-2 text-xs px-2 py-1 bg-green-500/20 text-green-400 rounded-md inline-block">
-                    Current Owner
+                <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-medium text-white truncate max-w-xs">
+                      {entry}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="p-1 h-auto text-blue-400 hover:text-blue-300"
+                      onClick={() => navigator.clipboard.writeText(entry)}
+                    >
+                      <ArrowUpRight className="h-3 w-3" />
+                    </Button>
                   </div>
-                )}
+
+                  {index === 0 && (
+                    <div className="mt-2 text-xs px-2 py-1 bg-green-500/20 text-green-400 rounded-md inline-block">
+                      Current Owner
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
         </div>
       </div>
 
-      {/* Footer */}
       <div className="p-4 border-t border-white/10 flex justify-end">
         <Button
           variant="outline"
