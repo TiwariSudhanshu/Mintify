@@ -31,12 +31,12 @@ export default function HomeFeaturesSection() {
           {/* Feature 1 */}
           <HoverCard>
             <HoverCardTrigger>
-              <Card className="glassmorphism h-full p-6 border border-white/10 hover:border-purple-500/50 transition duration-300 hover:shadow-lg hover:shadow-purple-600/20">
+              <Card className="bg-[#0c0c0c] glassmorphism h-full p-6 border border-white/10 hover:border-purple-500/50 transition duration-300 hover:shadow-lg hover:shadow-purple-600/20">
                 <CardHeader>
                   <div className="w-12 h-12 rounded-full bg-purple-500/20 flex items-center justify-center mb-4">
                     <ShieldCheck className="h-6 w-6 text-purple-400" />
                   </div>
-                  <CardTitle className="text-xl">Tamper-Proof Records</CardTitle>
+                  <CardTitle className="text-xl text-white">Tamper-Proof Records</CardTitle>
                   <CardDescription className="text-gray-400">
                     Immutable blockchain entries ensure every transaction is verifiable and secure.
                   </CardDescription>
@@ -56,12 +56,12 @@ export default function HomeFeaturesSection() {
           {/* Feature 2 */}
           <HoverCard>
             <HoverCardTrigger>
-              <Card className="glassmorphism h-full p-6 border border-white/10 hover:border-pink-500/50 transition duration-300 hover:shadow-lg hover:shadow-pink-600/20">
+              <Card className="glassmorphism bg-[#0c0c0c] h-full p-6 border border-white/10 hover:border-pink-500/50 transition duration-300 hover:shadow-lg hover:shadow-pink-600/20">
                 <CardHeader>
                   <div className="w-12 h-12 rounded-full bg-pink-500/20 flex items-center justify-center mb-4">
                     <BadgeCheck className="h-6 w-6 text-pink-400" />
                   </div>
-                  <CardTitle className="text-xl">Product Authentication</CardTitle>
+                  <CardTitle className="text-xl text-white">Product Authentication</CardTitle>
                   <CardDescription className="text-gray-400">
                     Every product is linked with a unique NFT for proof of authenticity and ownership.
                   </CardDescription>
@@ -81,12 +81,12 @@ export default function HomeFeaturesSection() {
           {/* Feature 3 */}
           <HoverCard>
             <HoverCardTrigger>
-              <Card className="glassmorphism h-full p-6 border border-white/10 hover:border-blue-500/50 transition duration-300 hover:shadow-lg hover:shadow-blue-600/20">
+              <Card className="glassmorphism bg-[#0c0c0c] h-full p-6 border border-white/10 hover:border-blue-500/50 transition duration-300 hover:shadow-lg hover:shadow-blue-600/20">
                 <CardHeader>
-                  <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center mb-4">
+                  <div className="w-12 h-12 rounded-full  bg-blue-500/20 flex items-center justify-center mb-4">
                     <SatelliteDish className="h-6 w-6 text-blue-400" />
                   </div>
-                  <CardTitle className="text-xl">Live Product Tracking</CardTitle>
+                  <CardTitle className="text-xl text-white">Live Product Tracking</CardTitle>
                   <CardDescription className="text-gray-400">
                     Track product movement, condition, and location in real-time across your ecosystem.
                   </CardDescription>
@@ -104,6 +104,6 @@ export default function HomeFeaturesSection() {
           </HoverCard>
         </div>
       </div>
-    </section>
+    </section> 
   );
 }

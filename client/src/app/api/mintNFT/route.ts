@@ -1,5 +1,3 @@
-export const runtime = 'nodejs';
-
 
 import { NextResponse } from 'next/server';
 import { contract } from '@/lib/contract';
@@ -7,10 +5,8 @@ import Product from '@/models/Product.model';
 import cloudinary from '@/lib/cloudinary';
 import connectDB from '@/lib/connectDB';
 import { getAddress } from 'ethers';
-import formidable from 'formidable';
 import { promises as fs } from 'fs';
-import { IncomingMessage } from 'http';
-import { NextApiRequest } from 'next';
+import { escrowContract } from '@/lib/contract';
 
 // This is needed for App Router API routes
 export const config = {

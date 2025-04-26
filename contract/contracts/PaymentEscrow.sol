@@ -7,41 +7,58 @@ contract PaymentEscrow {
         address seller;
         uint256 amount;
         bool isPaid;
+        bool exists;
     }
 
     mapping(uint256 => Payment) public payments;
 
     event PaymentInitiated(uint256 productId, address indexed buyer, address indexed seller, uint256 amount);
+    event PaymentApproved(uint256 productId, address indexed seller);
+    event PaymentRejected(uint256 productId, address indexed buyer);
     event PaymentReleased(uint256 productId, address indexed seller);
     event PaymentRefunded(uint256 productId, address indexed buyer);
 
+    // Buyer initiates payment
     function initiatePayment(uint256 productId, address seller) public payable {
         require(msg.value > 0, "Must send payment.");
-        require(payments[productId].amount == 0, "Payment already exists.");
+        require(!payments[productId].exists, "Payment already exists.");
 
-        payments[productId] = Payment(msg.sender, seller, msg.value, false);
+        payments[productId] = Payment({
+            buyer: msg.sender,
+            seller: seller,
+            amount: msg.value,
+            isPaid: false,
+            exists: true
+        });
+
         emit PaymentInitiated(productId, msg.sender, seller, msg.value);
     }
 
-    function confirmDelivery(uint256 productId) public {
+    // Seller approves payment (releases funds)
+    function approvePayment(uint256 productId) public {
         Payment storage payment = payments[productId];
-        require(msg.sender == payment.buyer, "Only buyer can confirm.");
-        require(!payment.isPaid, "Already paid.");
+        require(payment.exists, "Payment does not exist.");
+        require(msg.sender == payment.seller, "Only seller can approve.");
+        require(!payment.isPaid, "Payment already processed.");
 
-        payable(payment.seller).transfer(payment.amount);
         payment.isPaid = true;
+        payable(payment.seller).transfer(payment.amount);
 
-        emit PaymentReleased(productId, payment.seller);
+        emit PaymentApproved(productId, msg.sender);
+        emit PaymentReleased(productId, msg.sender);
     }
 
-    function refundBuyer(uint256 productId) public {
+    // Seller rejects payment (refunds buyer)
+    function rejectPayment(uint256 productId) public {
         Payment storage payment = payments[productId];
-        require(msg.sender == payment.buyer, "Only buyer can request refund.");
-        require(!payment.isPaid, "Already paid.");
+        require(payment.exists, "Payment does not exist.");
+        require(msg.sender == payment.seller, "Only seller can reject.");
+        require(!payment.isPaid, "Payment already processed.");
 
         payable(payment.buyer).transfer(payment.amount);
         delete payments[productId];
 
+        emit PaymentRejected(productId, payment.buyer);
         emit PaymentRefunded(productId, payment.buyer);
     }
 }

@@ -4,6 +4,11 @@ interface Attribute {
     type: string;
     value: string;
 }
+interface Payment {
+    priceInEth: number;
+    tokenId: string;
+    from: string;
+}
  interface Product {
     name: string;
     description?: string;
@@ -14,6 +19,7 @@ interface Attribute {
     category: string;
     quantity: number;
     owner: string;
+    Payment: Payment;
 }
 
 
@@ -34,7 +40,14 @@ const ProductSchema = new Schema<ProductDocument>({
     category: { type: String, required: true },
     quantity: { type: Number, default: 1 },
     owner: { type: String, required: true },
-});
+    Payment: { 
+        type: { 
+            priceInEth: { type: Number },
+            tokenId: { type: String },
+            from: { type: String },
+        },
+        default: {}
+    },});
 
 const Product = mongoose.models.Product || mongoose.model<ProductDocument>('Product', ProductSchema);
 

@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
-import { WalletProvider } from "@/context/WalletContext";
 import { Providers } from "@/store/provider";
 import {Toaster} from "sonner"
 const inter = Inter({ subsets: ["latin"] });
@@ -21,7 +20,6 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <Providers>
-          <WalletProvider>
             <Navbar />
             {children}
             <script
@@ -42,7 +40,6 @@ export default function RootLayout({
                 `,
               }}
             />
-          </WalletProvider>
           <Toaster richColors position="top-right" />
         </Providers>
       </body>

@@ -52,6 +52,8 @@ function BrandDashboard() {
     fetchProducts();
   }, []);
 
+  
+
   const dispatch = useDispatch();
 
   const handleLogout = () => {
