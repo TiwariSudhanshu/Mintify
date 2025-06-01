@@ -1,22 +1,42 @@
 export const runtime = 'nodejs';
 
-import { NextResponse, NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import Product from "@/models/Product.model";
 import connectDB from "@/lib/connectDB";
+import { Document } from "mongoose";
 
-export async function GET(req: NextRequest) {
+interface IProduct extends Document {
+  _id: string;
+  name: string;
+  description: string;
+  image: string;
+  priceInEth: number;
+  category: string;
+  owner: string;
+  attributes: any[];
+  status: string;
+  createdAt: Date;
+  tokenId: number;
+}
+
+export async function GET() {
   try {
     await connectDB();
+    console.log("Fetching all products from database...");
     
-    // Get all products from the database
     const products = await Product.find({});
-    
+    console.log(`Found ${products.length} products`);
+
     if (!products || products.length === 0) {
-      return NextResponse.json({ message: "No NFTs found" }, { status: 404 });
+      console.log("No products found");
+      return NextResponse.json(
+        { products: [] },
+        { status: 200 }
+      );
     }
 
     // Process the products to match the expected format
-    const processedProducts = products.map(product => ({
+    const processedProducts = products.map((product: IProduct) => ({
       _id: product._id,
       name: product.name,
       description: product.description,
@@ -24,17 +44,18 @@ export async function GET(req: NextRequest) {
       priceInEth: product.priceInEth,
       category: product.category,
       owner: product.owner,
-      attributes: product.attributes || [],
-      status: "Available",
+      attributes: product.attributes,
+      status: product.status,
       createdAt: product.createdAt,
-      tokenId: product.tokenId
+      tokenId: product.tokenId,
     }));
 
-    return NextResponse.json({ products: processedProducts }, { status: 200 });
+    console.log("Returning processed products:", processedProducts);
+    return NextResponse.json({ products: processedProducts });
   } catch (error) {
-    console.error("Error fetching NFTs:", error);
+    console.error("Error in getAllNFT route:", error);
     return NextResponse.json(
-      { message: "Failed to fetch NFTs" },
+      { error: "Failed to fetch products" },
       { status: 500 }
     );
   }
