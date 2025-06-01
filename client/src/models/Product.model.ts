@@ -20,6 +20,11 @@ interface Payment {
     quantity: number;
     owner: string;
     Payment: Payment;
+    ownershipHistory: {
+        address: string;
+        timestamp: Date;
+        txHash: string;
+    }[];
 }
 
 
@@ -32,14 +37,19 @@ const AttributeSchema = new Schema<Attribute>({
 
 const ProductSchema = new Schema<ProductDocument>({
     name: { type: String, required: true },
-    description: { type: String},
+    description: { type: String, required: true },
     priceInEth: { type: Number, required: true },
-    tokenId: { type: String },
-    attributes: { type: [AttributeSchema]},
-    image: { type: String },
+    tokenId: { type: String, required: true, unique: true },
+    attributes: { type: [AttributeSchema] },
+    image: { type: String, required: true },
     category: { type: String, required: true },
     quantity: { type: Number, default: 1 },
     owner: { type: String, required: true },
+    ownershipHistory: [{
+        address: { type: String, required: true },
+        timestamp: { type: Date, default: Date.now },
+        txHash: { type: String, required: true },
+    }],
     Payment: { 
         type: { 
             priceInEth: { type: Number },
@@ -47,7 +57,10 @@ const ProductSchema = new Schema<ProductDocument>({
             from: { type: String },
         },
         default: {}
-    },});
+    },
+}, {
+    timestamps: true,
+});
 
 const Product = mongoose.models.Product || mongoose.model<ProductDocument>('Product', ProductSchema);
 

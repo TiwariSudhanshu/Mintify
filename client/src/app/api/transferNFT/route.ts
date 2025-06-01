@@ -1,10 +1,10 @@
 export const runtime = 'nodejs';
 
 import { NextResponse } from 'next/server';
-import { contract, wallet } from '@/lib/contract';
 import connectDB from '@/lib/connectDB';
 import Product from '@/models/Product.model';
-import { getAddress } from 'ethers';
+import { ethers } from 'ethers';
+import { getProviderAndSigner, contract_ABI, contractAddress } from '@/lib/contract';
 
 export async function POST(req: Request) {
   try {
@@ -17,31 +17,43 @@ export async function POST(req: Request) {
     if (!tokenId || !newOwner || !newOwner.startsWith("0x")) {
       return NextResponse.json({ error: "Invalid tokenId or new owner address" }, { status: 400 });
     }
-    console.log("NFT Owner:", await contract.ownerOf(tokenId));
-console.log("Backend signer address (msg.sender):", wallet.address);
-console.log("Is signer approved for all?", await contract.isApprovedForAll(newOwner, wallet.address));
-console.log("Approved address for tokenId:", await contract.getApproved(tokenId));
 
+    // Get provider and signer
+    const { signer } = await getProviderAndSigner();
+    const contract = new ethers.Contract(contractAddress, contract_ABI, signer);
 
     // Get current owner of the NFT
     const currentOwner = await contract.ownerOf(tokenId);
-    const parsedNewOwner = getAddress(newOwner);
+    const parsedNewOwner = ethers.getAddress(newOwner);
 
     console.log(`Transferring NFT #${tokenId} from ${currentOwner} to ${parsedNewOwner}`);
 
     // Perform transfer
-    const tx = await contract["safeTransferFrom(address,address,uint256)"](currentOwner, parsedNewOwner, tokenId);
+    const tx = await contract.safeTransferFrom(currentOwner, parsedNewOwner, tokenId);
     console.log("Transaction hash: ", tx.hash);
 
     const receipt = await tx.wait();
     console.log("Transfer confirmed: ", receipt.transactionHash);
 
-    // Update in MongoDB (optional but good UX)
+    // Update in MongoDB
     const updatedProduct = await Product.findOneAndUpdate(
       { tokenId },
-      { owner: parsedNewOwner.toLowerCase() },
+      { 
+        $set: { owner: parsedNewOwner.toLowerCase() },
+        $push: { 
+          ownershipHistory: {
+            address: parsedNewOwner.toLowerCase(),
+            timestamp: new Date().toISOString(),
+            txHash: receipt.transactionHash
+          }
+        }
+      },
       { new: true }
     );
+
+    if (!updatedProduct) {
+      return NextResponse.json({ error: "Product not found in database" }, { status: 404 });
+    }
 
     return NextResponse.json({
       message: "NFT transferred successfully",
