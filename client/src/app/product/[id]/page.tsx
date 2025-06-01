@@ -136,24 +136,16 @@ export default function NFTDetailPage() {
 
   const handleGetOwnershipHistory = async (id: string) => {
     try {
-      const response = await fetch("/api/getHistory", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ tokenId: id }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch ownership history");
-      }
-
-      const data = await response.json();
-      console.log("Ownership History Data: ", data.history);
+      const { signer } = await getProviderAndSigner();
+      const contract = new ethers.Contract(contractAddress, contract_ABI, signer);
+      
+      // Get ownership history from contract
+      const history = await contract.getOwnershipHistory(id);
+      console.log("Contract ownership history:", history);
       
       // Format the history data for display
-      const formattedHistory = data.history.map((address: string) => ({
-        address,
+      const formattedHistory = history.map((address: string) => ({
+        address: address.toLowerCase(),
         timestamp: new Date().toISOString(), // Contract doesn't provide timestamps
         txHash: "0x" + Math.random().toString(16).substring(2, 34), // Contract doesn't provide tx hashes
       }));
@@ -976,53 +968,60 @@ export default function NFTDetailPage() {
             {/* Content */}
             <div className="p-6">
               <div className="space-y-6">
-                {history && history.length > 0 ? (
-                  history.map((entry, index) => (
-                    <div key={index} className="relative pl-8">
-                      {/* Event marker */}
-                      <div
-                        className={`absolute top-2 left-0 w-8 h-8 rounded-full flex items-center justify-center ${
-                          index === 0
-                            ? "bg-gradient-to-r from-green-400 to-emerald-500"
-                            : "bg-white/10"
-                        }`}
-                      >
-                        {index === 0 ? (
-                          <CheckCircle className="h-4 w-4 text-white" />
-                        ) : (
-                          <User className="h-4 w-4 text-gray-400" />
-                        )}
-                      </div>
+             {history && history.length > 1 ? (
+  [...history.slice(1)].reverse().map((entry, index, arr) => (
+    <div key={index} className="relative pl-8">
+      {/* Event marker */}
+      <div
+        className={`absolute top-2 left-0 w-8 h-8 rounded-full flex items-center justify-center ${
+          index === 0
+            ? "bg-gradient-to-r from-green-400 to-emerald-500"
+            : "bg-white/10"
+        }`}
+      >
+        {index === 0 ? (
+          <CheckCircle className="h-4 w-4 text-white" />
+        ) : (
+          <User className="h-4 w-4 text-gray-400" />
+        )}
+      </div>
 
-                      {/* Content */}
-                      <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="font-medium text-white truncate max-w-xs">
-                            {formatAddress(entry.address)}
-                          </span>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="p-1 h-auto text-blue-400 hover:text-blue-300"
-                            onClick={() => navigator.clipboard.writeText(entry.address)}
-                          >
-                            <ExternalLink className="h-3 w-3" />
-                          </Button>
-                        </div>
+      {/* Content */}
+      <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4">
+        <div className="flex items-center justify-between mb-2">
+          <span className="font-medium text-white truncate max-w-xs">
+            {formatAddress(entry.address)}
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="p-1 h-auto text-blue-400 hover:text-blue-300"
+            onClick={() => navigator.clipboard.writeText(entry.address)}
+          >
+            <ExternalLink className="h-3 w-3" />
+          </Button>
+        </div>
 
-                        {index === 0 && (
-                          <div className="mt-2 text-xs px-2 py-1 bg-green-500/20 text-green-400 rounded-md inline-block">
-                            Current Owner
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-8">
-                    <p className="text-gray-400">No ownership history available</p>
-                  </div>
-                )}
+        {/* Tags */}
+        {index === 0 && (
+          <div className="mt-2 text-xs px-2 py-1 bg-green-500/20 text-green-400 rounded-md inline-block">
+            Current Owner
+          </div>
+        )}
+        {index === arr.length - 1 && (
+          <div className="mt-2 text-xs px-2 py-1 bg-blue-500/20 text-blue-400 rounded-md inline-block">
+            Creator
+          </div>
+        )}
+      </div>
+    </div>
+  ))
+) : (
+  <div className="text-center py-8">
+    <p className="text-gray-400">No ownership history available</p>
+  </div>
+)}
+
               </div>
             </div>
 
