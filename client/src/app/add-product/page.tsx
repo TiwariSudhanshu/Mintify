@@ -7,6 +7,9 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useSelector } from "react-redux";
+import { useContract } from '@/hooks/useContract';
+import { ethers } from 'ethers';
+import { contract_ABI, contractAddress } from '@/lib/contract';
 
 
 interface FormData {
@@ -33,6 +36,7 @@ export default function AddProduct() {
     category: "physical",
     attributes: [{ trait_type: "", value: "" }]
   });
+  const { mintNFT, isLoading: isContractLoading } = useContract();
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -77,14 +81,38 @@ export default function AddProduct() {
     setIsLoading(true);
   
     try {
+      // First mint the NFT on the blockchain
+      const productInfo = `${formData.name} - ${formData.price}`;
+      const tx = await mintNFT(walletAddress, productInfo);
+      const receipt = await tx.wait();
+
+      // Get tokenId from the transaction receipt
+      let tokenId = null;
+      const contract = new ethers.Contract(contractAddress, contract_ABI);
+      for (const log of receipt.logs) {
+        try {
+          const parsedLog = contract.interface.parseLog(log);
+          if (parsedLog && parsedLog.name === "ProductMinted") {
+            tokenId = parsedLog.args.tokenId.toString();
+            break;
+          }
+        } catch (e) {
+          continue;
+        }
+      }
+
+      if (!tokenId) {
+        throw new Error("Failed to get token ID from transaction");
+      }
+
       // Create FormData object for file upload
       const mintData = new FormData();
-      mintData.append("recipient", walletAddress);
       mintData.append("name", formData.name);
       mintData.append("description", formData.description);
-      mintData.append("price", formData.price);
-      mintData.append("quantity", formData.quantity);
+      mintData.append("priceInEth", formData.price);
       mintData.append("category", formData.category);
+      mintData.append("owner", walletAddress);
+      mintData.append("tokenId", tokenId);
       
       // Only include image if it exists
       if (formData.image) {
@@ -95,11 +123,10 @@ export default function AddProduct() {
       const response = await fetch("/api/mintNFT", {
         method: "POST",
         body: mintData,
-        // Note: Don't set Content-Type header when using FormData
       });
   
       if (!response.ok) {
-        throw new Error("Failed to mint NFT");
+        throw new Error("Failed to save NFT data");
       }
   
       const result = await response.json();

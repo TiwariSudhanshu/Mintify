@@ -1,45 +1,41 @@
 export const runtime = 'nodejs';
 
-
 import { NextResponse, NextRequest } from "next/server";
-import { contract } from "@/lib/contract";
 import Product from "@/models/Product.model";
 import connectDB from "@/lib/connectDB";
 
 export async function GET(req: NextRequest) {
   try {
     await connectDB();
-    console.log("Connected to DB");
-    const tokenIds = await contract.getAllContractTokens();
-    const formattedTokenIds = tokenIds.map((tokenId: any) =>
-      tokenId.toString()
+    
+    // Get all products from the database
+    const products = await Product.find({});
+    
+    if (!products || products.length === 0) {
+      return NextResponse.json({ message: "No NFTs found" }, { status: 404 });
+    }
+
+    // Process the products to match the expected format
+    const processedProducts = products.map(product => ({
+      _id: product._id,
+      name: product.name,
+      description: product.description,
+      image: product.image,
+      priceInEth: product.priceInEth,
+      category: product.category,
+      owner: product.owner,
+      attributes: product.attributes || [],
+      status: "Available",
+      createdAt: product.createdAt,
+      tokenId: product.tokenId
+    }));
+
+    return NextResponse.json({ products: processedProducts }, { status: 200 });
+  } catch (error) {
+    console.error("Error fetching NFTs:", error);
+    return NextResponse.json(
+      { message: "Failed to fetch NFTs" },
+      { status: 500 }
     );
-
-    const ProductInfos = await Promise.all(
-      formattedTokenIds.map(async (tokenId: string) => {
-        try {
-          const [metaData, owner] = await contract.getProductDetails(tokenId);
-          const productName = metaData.split(" - ")[0];
-          const product = await Product.findOne({ name: productName, owner: owner.toLowerCase()});
-          if (!product) {
-            console.warn(
-              `Product not found for token ${tokenId}: ${productName}`
-            );
-            return null; // Skip if not found
-          }
-
-          return product;
-        } catch (err) {
-          console.error(`Error processing token ${tokenId}:`, err);
-          return null;
-        }
-      })
-    );
-    const validProducts = ProductInfos.filter(Boolean);
-
-    return NextResponse.json(validProducts, { status: 200 });
-  } catch (e) {
-    console.error("Error getting NFT: ", e);
-    return NextResponse.json({ error: "Error getting NFT" }, { status: 500 });
   }
 }

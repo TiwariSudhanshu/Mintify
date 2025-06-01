@@ -2,22 +2,46 @@ import { ethers } from 'ethers';
 import contractData from './MintNFT.json'; 
 import escrowContractData from './PaymentEscrow.json';
 
-const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS!;
-const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL!;
-const privateKey = process.env.CONTRACT_PRIVATE_KEY!; 
+export const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS!;
+export const escrowContractAddress = process.env.NEXT_PUBLIC_ESCROW_CONTRACT_ADDRESS!;
 const chainId = Number(process.env.NEXT_PUBLIC_CHAIN_ID!);
-const escrowContractAddress = process.env.NEXT_PUBLIC_ESCROW_CONTRACT_ADDRESS!;
 
-const contract_ABI = contractData.abi;
-const escrowContract_ABI = escrowContractData.abi;
+export const contract_ABI = contractData.abi;
+export const escrowContract_ABI = escrowContractData.abi;
 
-const provider = new ethers.JsonRpcProvider(rpcUrl, {
-  name: 'arbitrum-sepolia',
-  chainId,
-});
+// Function to get provider and signer
+export const getProviderAndSigner = async () => {
+  if (typeof window === 'undefined' || !window.ethereum) {
+    throw new Error('Please install MetaMask to use this feature');
+  }
 
-const wallet = new ethers.Wallet(privateKey, provider);
-const contract = new ethers.Contract(contractAddress, contract_ABI, wallet);
-const escrowContract = new ethers.Contract(escrowContractAddress, escrowContract_ABI, wallet);
+  try {
+    // Request account access
+    await window.ethereum.request({ method: 'eth_requestAccounts' });
+    
+    // Create provider and signer
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const signer = await provider.getSigner();
 
-export { contract, provider, wallet, escrowContract };
+    // Check if we're on the correct network
+    const network = await provider.getNetwork();
+    if (network.chainId !== BigInt(chainId)) {
+      throw new Error(`Please switch to Arbitrum Sepolia network. Current network: ${network.name}`);
+    }
+
+    return { provider, signer };
+  } catch (error) {
+    console.error('Error getting provider and signer:', error);
+    throw error;
+  }
+};
+
+// Function to get contract instances
+export const getContracts = async () => {
+  const { signer } = await getProviderAndSigner();
+  
+  const contract = new ethers.Contract(contractAddress, contract_ABI, signer);
+  const escrowContract = new ethers.Contract(escrowContractAddress, escrowContract_ABI, signer);
+  
+  return { contract, escrowContract };
+};

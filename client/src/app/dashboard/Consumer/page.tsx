@@ -27,6 +27,7 @@ import {
   ShoppingBag
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useContract } from '@/hooks/useContract';
 
 // Define TypeScript interfaces
 interface NFT {
@@ -70,6 +71,8 @@ export default function ConsumerDashboard() {
   const [history, setHistory] = useState<string[]>([]);
   
   const router = useRouter();
+  const { initiatePayment, isLoading: isContractLoading } = useContract();
+
   const handleGetOwnershipHistory = async (tokenId: string) => {
     try {
       const response = await fetch("/api/getHistory", {
@@ -90,23 +93,22 @@ export default function ConsumerDashboard() {
     }
   };
 
-  const handlePurchase = async()=>{
-  try {
-      const response = await fetch("/api/initiatePayment", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({amountInEth: searchResult?.priceInEth, address: searchResult?.owner, productId: tokenId})
-      });
-      if(response.ok){
-        toast.success("Payment Done");
-      }
-  } catch (error) {
+  const handlePurchase = async () => {
+    if (!searchResult?.priceInEth || !searchResult?.owner || !tokenId) {
+      toast.error("Missing required information for purchase");
+      return;
+    }
+
+    try {
+      await initiatePayment(
+        tokenId,
+        searchResult.owner,
+        searchResult.priceInEth.toString()
+      );
+    } catch (error) {
       console.error("Error initiating payment:", error);
-      toast.error("Payment initiation failed");
-  }
-  }
+    }
+  };
 
   // Format address for display
   const formatAddress = (address: string): string => {

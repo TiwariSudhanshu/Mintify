@@ -1,14 +1,25 @@
-import { escrowContract } from "@/lib/contract";
 import { NextRequest, NextResponse } from "next/server";
+import Product from "@/models/Product.model";
 
 export async function POST(req: NextRequest){
     try{
         const {productId} = await req.json();
-        const tx = await escrowContract.approvePayment(productId)
-        await tx.wait();
-        return NextResponse.json({message: "Approved Payment"},{status:200});
+        
+        // Update payment status in database
+        const updatedProduct = await Product.findOneAndUpdate(
+            { tokenId: productId },
+            { $set: { "Payment.status": "approved" } },
+            { new: true }
+        );
+
+        if (!updatedProduct) {
+            return NextResponse.json({message: "Product not found"}, {status: 404});
+        }
+
+        return NextResponse.json({message: "Payment approved in database"}, {status:200});
     }
-    catch{
-        return NextResponse.json({message: "Failed to approve payment"}, {status:500})
+    catch(error){
+        console.error("Error approving payment:", error);
+        return NextResponse.json({message: "Failed to approve payment"}, {status:500});
     }
 }
