@@ -20,6 +20,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { set } from "mongoose";
+import { useContract } from '@/hooks/useContract';
 
 // Define TypeScript interfaces
 interface NFT {
@@ -75,6 +76,8 @@ export default function NFTDetailPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
   const [showRejectPaymentModal, setShowRejectPaymentModal] = useState(false);
+  const { approvePayment, rejectPayment, transferNFT, isLoading: isContractLoading } = useContract();
+
   // Format address for display
   const formatAddress = (address: string): string => {
     return `${address.substring(0, 6)}...${address.substring(
@@ -140,51 +143,45 @@ export default function NFTDetailPage() {
   };
 
   const handleTransferNFT = async () => {
-    if (
-      !transferAddress ||
-      !transferAddress.startsWith("0x") ||
-      transferAddress.length !== 42
-    ) {
+    if (!transferAddress || !transferAddress.startsWith("0x") || transferAddress.length !== 42) {
       toast.error("Please enter a valid wallet address");
       return;
     }
 
-    setIsTransferring(true);
     try {
-      const response = await fetch("/api/transferNFT", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          tokenId: tokenId,
-          newOwner: transferAddress,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        toast.success("NFT transferred successfully");
-        // Update the NFT data with new owner
-        if (nft) {
-          setNft({
-            ...nft,
-            owner: transferAddress,
-          });
-        }
-        // Close the modal
-        setShowTransferModal(false);
-        // Refresh ownership history
-        handleGetOwnershipHistory(tokenId);
-      } else {
-        toast.error(data.message || "Failed to transfer NFT");
+      await transferNFT(tokenId, transferAddress);
+      
+      // Update the NFT data with new owner
+      if (nft) {
+        setNft({
+          ...nft,
+          owner: transferAddress,
+        });
       }
+      // Close the modal
+      setShowTransferModal(false);
+      // Refresh ownership history
+      handleGetOwnershipHistory(tokenId);
     } catch (error) {
       console.error("Error transferring NFT:", error);
-      toast.error("Failed to transfer NFT. Please try again.");
-    } finally {
-      setIsTransferring(false);
+    }
+  };
+
+  const handleApprovePayment = async () => {
+    try {
+      await approvePayment(tokenId);
+      setShowApprovePaymentModal(false);
+    } catch (error) {
+      console.error("Error approving payment:", error);
+    }
+  };
+
+  const handleRejectPayment = async () => {
+    try {
+      await rejectPayment(tokenId);
+      setShowRejectPaymentModal(false);
+    } catch (error) {
+      console.error("Error rejecting payment:", error);
     }
   };
 
@@ -227,55 +224,6 @@ export default function NFTDetailPage() {
 
     fetchNFTData();
   }, [tokenId]);
-
-  // Handle transfer address change
-  const approvePayment = async(productId: string) => {
-    setIsProcessing(true);
-      try{
-        const res = await fetch("/api/approvePayment", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ productId }),
-        });
-      const data = await res.json();
-      if(res.ok){
-        toast.success("Payment approved successfully");
-      setIsProcessing(false);
-      }else{
-        toast.error("Failed to approve payment: " + data.message);
-      }
-    } catch (error:any) {
-      toast.error("Failed to approve payment: " + error.message);
-    } finally {
-      setIsProcessing(false);
-    }
-  }
-  
-    const rejectPayment = async(productId: string) => {
-      setIsRejecting(true);
-      try{
-        const res = await fetch("/api/rejectPayment", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ productId }),
-        });
-      const data = await res.json();
-      if(res.ok){
-        toast.success("Payment rejected successfully");
-        setIsRejecting(false);
-      }else{
-        toast.error("Failed to reject payment: " + data.message);
-      }
-    } catch (error:any) {
-      toast.error("Failed to reject payment: " + error.message);
-    } finally {
-      setIsRejecting(false);
-    }
-    }
 
   if (loading) {
     return (
