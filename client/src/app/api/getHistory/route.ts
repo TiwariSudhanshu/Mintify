@@ -3,6 +3,8 @@ export const runtime = 'nodejs';
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/connectDB";
 import Product from "@/models/Product.model";
+import { ethers } from 'ethers';
+import { getProviderAndSigner, contract_ABI, contractAddress } from '@/lib/contract';
 
 export async function POST(req: NextRequest) {
     try {
@@ -19,30 +21,23 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // Find the product and get its ownership history
-        const product = await Product.findOne({ tokenId });
-        console.log("Found product:", product);
+        // Get provider and signer
+        const { signer } = await getProviderAndSigner();
+        const contract = new ethers.Contract(contractAddress, contract_ABI, signer);
 
-        if (!product) {
-            console.log("No product found with tokenId:", tokenId);
-            return NextResponse.json(
-                { error: "Product not found" },
-                { status: 404 }
-            );
-        }
+        // Get ownership history from contract
+        const history = await contract.getOwnershipHistory(tokenId);
+        console.log("Contract ownership history:", history);
 
-        // For now, we'll return a simple history with just the current owner
-        // In a real implementation, you would store and retrieve the full ownership history
-        const history = [product.owner];
+        // Convert addresses to lowercase for consistency
+        const formattedHistory = history.map((address: string) => address.toLowerCase());
 
-        console.log("Returning ownership history:", history);
-        return NextResponse.json({ history });
+        return NextResponse.json({
+            history: formattedHistory
+        }, { status: 200 });
 
-    } catch (error) {
-        console.error("Error fetching ownership history:", error);
-        return NextResponse.json(
-            { error: "Failed to fetch ownership history" },
-            { status: 500 }
-        );
+    } catch (e: any) {
+        console.error("Error fetching ownership history:", e);
+        return NextResponse.json({ error: e.message || "Failed to fetch ownership history" }, { status: 500 });
     }
 }

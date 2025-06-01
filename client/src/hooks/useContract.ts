@@ -129,12 +129,22 @@ export const useContract = () => {
   const transferNFT = async (tokenId: string, to: string) => {
     try {
       setIsLoading(true);
-      const { signer } = await getProviderAndSigner();
-      const contract = new ethers.Contract(contractAddress, contract_ABI, signer);
-      
-      const tx = await contract.safeTransferFrom(signer.address, to, tokenId);
-      await tx.wait();
+      const response = await fetch('/api/transferNFT', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ tokenId, newOwner: to }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to transfer NFT');
+      }
+
+      const data = await response.json();
       toast.success('NFT transferred successfully!');
+      return data;
     } catch (error: any) {
       console.error('Error transferring NFT:', error);
       toast.error(error.message || 'Failed to transfer NFT');

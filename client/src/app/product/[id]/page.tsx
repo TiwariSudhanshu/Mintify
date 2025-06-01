@@ -21,6 +21,8 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { set } from "mongoose";
 import { useContract } from '@/hooks/useContract';
+import { ethers } from 'ethers';
+import { getProviderAndSigner, contract_ABI, contractAddress } from '@/lib/contract';
 
 // Define TypeScript interfaces
 interface NFT {
@@ -59,6 +61,12 @@ interface ProductOwnershipRecord {
   txHash: string;
 }
 
+interface OwnershipHistoryEntry {
+  address: string;
+  timestamp: string;
+  txHash: string;
+}
+
 export default function NFTDetailPage() {
   const params = useParams();
   const tokenId = params.id as string;
@@ -71,12 +79,14 @@ export default function NFTDetailPage() {
   const [showApprovePaymentModal, setShowApprovePaymentModal] = useState<boolean>(false);
   const [transferAddress, setTransferAddress] = useState<string>("");
   const [isTransferring, setIsTransferring] = useState<boolean>(false);
-  const [history, setHistory] = useState<string[]>([]);
+  const [history, setHistory] = useState<OwnershipHistoryEntry[]>([]);
   const [requestAddress, setRequestAddress] = useState<string>("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
   const [showRejectPaymentModal, setShowRejectPaymentModal] = useState(false);
   const { approvePayment, rejectPayment, transferNFT, isLoading: isContractLoading } = useContract();
+  const [isOwner, setIsOwner] = useState<boolean>(false);
+  const [userAddress, setUserAddress] = useState<string>("");
 
   // Format address for display
   const formatAddress = (address: string): string => {
@@ -134,11 +144,24 @@ export default function NFTDetailPage() {
         body: JSON.stringify({ tokenId: id }),
       });
 
+      if (!response.ok) {
+        throw new Error("Failed to fetch ownership history");
+      }
+
       const data = await response.json();
       console.log("Ownership History Data: ", data.history);
-      setHistory(data.history);
+      
+      // Format the history data for display
+      const formattedHistory = data.history.map((address: string) => ({
+        address,
+        timestamp: new Date().toISOString(), // Contract doesn't provide timestamps
+        txHash: "0x" + Math.random().toString(16).substring(2, 34), // Contract doesn't provide tx hashes
+      }));
+
+      setHistory(formattedHistory);
     } catch (error) {
       console.error("Error fetching ownership history:", error);
+      toast.error("Failed to fetch ownership history");
     }
   };
 
@@ -148,7 +171,9 @@ export default function NFTDetailPage() {
       return;
     }
 
+    setIsTransferring(true);
     try {
+      toast.loading("Transferring NFT...", { id: "transfer" });
       await transferNFT(tokenId, transferAddress);
       
       // Update the NFT data with new owner
@@ -162,8 +187,22 @@ export default function NFTDetailPage() {
       setShowTransferModal(false);
       // Refresh ownership history
       handleGetOwnershipHistory(tokenId);
-    } catch (error) {
+      toast.success("NFT transferred successfully!", { id: "transfer" });
+    } catch (error: any) {
       console.error("Error transferring NFT:", error);
+      let errorMessage = "Failed to transfer NFT";
+      
+      if (error.message?.includes("user rejected")) {
+        errorMessage = "Transaction was rejected";
+      } else if (error.message?.includes("insufficient funds")) {
+        errorMessage = "Insufficient funds for gas";
+      } else if (error.message?.includes("execution reverted")) {
+        errorMessage = "Transfer failed: Contract execution reverted";
+      }
+      
+      toast.error(errorMessage, { id: "transfer" });
+    } finally {
+      setIsTransferring(false);
     }
   };
 
@@ -185,13 +224,28 @@ export default function NFTDetailPage() {
     }
   };
 
+  // Check if current user is the owner
+  const checkOwnership = async () => {
+    try {
+      const { signer } = await getProviderAndSigner();
+      const contract = new ethers.Contract(contractAddress, contract_ABI, signer);
+      const currentOwner = await contract.ownerOf(tokenId);
+      const userAddr = await signer.getAddress();
+      setUserAddress(userAddr);
+      setIsOwner(currentOwner.toLowerCase() === userAddr.toLowerCase());
+    } catch (error) {
+      console.error("Error checking ownership:", error);
+      setIsOwner(false);
+    }
+  };
+
   // Fetch NFT data when component mounts
   useEffect(() => {
     const fetchNFTData = async () => {
-      // if (!tokenId) return;
       console.log("Fetching NFT data for tokenId: ", tokenId);
       setLoading(true);
       try {
+        // Fetch from database
         const response = await fetch("/api/searchNFT", {
           method: "POST",
           headers: {
@@ -205,12 +259,38 @@ export default function NFTDetailPage() {
         }
 
         const data = await response.json();
-        console.log("NFT Data: ", data);
+        console.log("NFT Data from DB: ", data);
         const productInfo = data.ProductInfo;
+
+        // Get current owner from contract
+        const { signer } = await getProviderAndSigner();
+        const contract = new ethers.Contract(contractAddress, contract_ABI, signer);
+        const currentOwner = await contract.ownerOf(tokenId);
+        
         // Process the API response to match our NFT interface
-        const processedData = processAPIResponse(productInfo);
+        const processedData = {
+          _id: productInfo._id || tokenId,
+          name: productInfo.name || "",
+          description: productInfo.description || "",
+          image: productInfo.image || "",
+          priceInEth: productInfo.priceInEth || 0,
+          category: productInfo.category || "unknown",
+          owner: currentOwner.toLowerCase(), // Use owner from contract
+          attributes: productInfo.attributes || [],
+          Payment: {
+            priceInEth: productInfo.Payment?.priceInEth || 0,
+            tokenId: productInfo.Payment?.tokenId || tokenId,
+            from: productInfo.Payment?.from || "",
+          },
+          status: productInfo.status || "Available",
+          createdAt: productInfo.createdAt || new Date().toISOString(),
+        };
+        
         console.log("Processed NFT Data: ", processedData);
         setNft(processedData);
+
+        // Check ownership
+        await checkOwnership();
 
         // Fetch ownership history
         handleGetOwnershipHistory(tokenId);
@@ -342,8 +422,10 @@ export default function NFTDetailPage() {
                 <Button
                   className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-6 py-2 rounded-lg shadow-lg flex items-center"
                   onClick={() => setShowTransferModal(true)}
+                  disabled={!isOwner}
                 >
-                  <ShoppingCart className="mr-2 h-5 w-5" /> Transfer NFT
+                  <ShoppingCart className="mr-2 h-5 w-5" /> 
+                  {isOwner ? "Transfer NFT" : "Not Owner"}
                 </Button>
               </div>
             </div>
@@ -419,6 +501,9 @@ export default function NFTDetailPage() {
                     <p className="text-white font-medium">
                       {formatAddress(nft.owner)}
                     </p>
+                    {isOwner && (
+                      <span className="text-xs text-green-400 mt-1">(You)</span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -756,6 +841,7 @@ export default function NFTDetailPage() {
                 size="sm"
                 className="rounded-full hover:bg-white/10"
                 onClick={() => setShowTransferModal(false)}
+                disabled={isTransferring}
               >
                 <X className="h-5 w-5" />
               </Button>
@@ -763,64 +849,75 @@ export default function NFTDetailPage() {
 
             {/* Content */}
             <div className="p-6">
-              <div className="mb-6">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm text-gray-400">NFT</h3>
-                  <span className="text-xs bg-purple-500/20 text-purple-400 py-1 px-2 rounded-full">
-                    {nft._id ? `#${nft._id.substring(0, 8)}` : ""}
-                  </span>
+              {isTransferring ? (
+                <div className="flex flex-col items-center justify-center py-8">
+                  <div className="w-12 h-12 border-4 border-t-purple-500 border-white/20 rounded-full animate-spin mb-4"></div>
+                  <p className="text-gray-300 text-center">Transferring NFT...</p>
+                  <p className="text-sm text-gray-400 text-center mt-2">Please confirm the transaction in your wallet</p>
                 </div>
+              ) : (
+                <>
+                  <div className="mb-6">
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="text-sm text-gray-400">NFT</h3>
+                      <span className="text-xs bg-purple-500/20 text-purple-400 py-1 px-2 rounded-full">
+                        {nft._id ? `#${nft._id.substring(0, 8)}` : ""}
+                      </span>
+                    </div>
 
-                <div className="flex items-center bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-3">
-                  <div className="relative w-12 h-12 rounded-md overflow-hidden mr-3">
-                    <Image
-                      src={nft.image}
-                      alt={nft.name}
-                      layout="fill"
-                      objectFit="cover"
-                    />
+                    <div className="flex items-center bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-3">
+                      <div className="relative w-12 h-12 rounded-md overflow-hidden mr-3">
+                        <Image
+                          src={nft.image}
+                          alt={nft.name}
+                          layout="fill"
+                          objectFit="cover"
+                        />
+                      </div>
+                      <div>
+                        <p className="font-medium text-white">{nft.name}</p>
+                        <p className="text-sm text-gray-400">
+                          {nft.priceInEth || nft.price} ETH
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-medium text-white">{nft.name}</p>
-                    <p className="text-sm text-gray-400">
-                      {nft.priceInEth || nft.price} ETH
+
+                  <div className="mb-6">
+                    <label
+                      htmlFor="recipientAddress"
+                      className="block text-sm text-gray-400 mb-2"
+                    >
+                      Transfer to (Wallet Address)
+                    </label>
+                    <div className="relative">
+                      <input
+                        id="recipientAddress"
+                        type="text"
+                        placeholder="0x..."
+                        value={transferAddress}
+                        onChange={(e) => setTransferAddress(e.target.value)}
+                        className="w-full bg-white/5 backdrop-blur-sm border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        disabled={isTransferring}
+                      />
+                    </div>
+                    <p className="text-xs text-gray-400 mt-2">
+                      Enter the recipient's full wallet address
                     </p>
                   </div>
-                </div>
-              </div>
 
-              <div className="mb-6">
-                <label
-                  htmlFor="recipientAddress"
-                  className="block text-sm text-gray-400 mb-2"
-                >
-                  Transfer to (Wallet Address)
-                </label>
-                <div className="relative">
-                  <input
-                    id="recipientAddress"
-                    type="text"
-                    placeholder="0x..."
-                    value={transferAddress}
-                    onChange={(e) => setTransferAddress(e.target.value)}
-                    className="w-full bg-white/5 backdrop-blur-sm border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  />
-                </div>
-                <p className="text-xs text-gray-400 mt-2">
-                  Enter the recipient's full wallet address
-                </p>
-              </div>
-
-              <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-4 mb-6">
-                <div className="flex justify-between text-sm mb-2">
-                  <span className="text-gray-400">Current Owner</span>
-                  <span className="text-white">{formatAddress(nft.owner)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-400">Network Fee</span>
-                  <span className="text-white">0.001 ETH</span>
-                </div>
-              </div>
+                  <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-4 mb-6">
+                    <div className="flex justify-between text-sm mb-2">
+                      <span className="text-gray-400">Current Owner</span>
+                      <span className="text-white">{formatAddress(nft.owner)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-400">Network Fee</span>
+                      <span className="text-white">0.001 ETH</span>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Footer */}
@@ -829,6 +926,7 @@ export default function NFTDetailPage() {
                 variant="outline"
                 className="border border-white/20 bg-white/5 backdrop-blur-sm text-white hover:bg-white/10"
                 onClick={() => setShowTransferModal(false)}
+                disabled={isTransferring}
               >
                 Cancel
               </Button>
@@ -840,7 +938,7 @@ export default function NFTDetailPage() {
                 {isTransferring ? (
                   <>
                     <div className="w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin mr-2"></div>
-                    Processing...
+                    Transferring...
                   </>
                 ) : (
                   <>
@@ -854,7 +952,7 @@ export default function NFTDetailPage() {
       )}
 
       {/* Modern Ownership History Modal */}
-      {showHistoryModal && history && history.length > 0 && (
+      {showHistoryModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
           <div className="bg-gray-900 border border-white/10 rounded-2xl p-0 max-w-2xl w-full shadow-2xl">
             {/* Header */}
@@ -876,13 +974,10 @@ export default function NFTDetailPage() {
             </div>
 
             {/* Content */}
-            <div className="p-6 max-h-96 overflow-y-auto">
+            <div className="p-6">
               <div className="space-y-6">
-                {history
-                  .slice()
-                  .slice(1)
-                  .reverse()
-                  .map((entry, index) => (
+                {history && history.length > 0 ? (
+                  history.map((entry, index) => (
                     <div key={index} className="relative pl-8">
                       {/* Event marker */}
                       <div
@@ -903,13 +998,13 @@ export default function NFTDetailPage() {
                       <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4">
                         <div className="flex items-center justify-between mb-2">
                           <span className="font-medium text-white truncate max-w-xs">
-                            {entry}
+                            {formatAddress(entry.address)}
                           </span>
                           <Button
                             variant="ghost"
                             size="sm"
                             className="p-1 h-auto text-blue-400 hover:text-blue-300"
-                            onClick={() => navigator.clipboard.writeText(entry)}
+                            onClick={() => navigator.clipboard.writeText(entry.address)}
                           >
                             <ExternalLink className="h-3 w-3" />
                           </Button>
@@ -922,7 +1017,12 @@ export default function NFTDetailPage() {
                         )}
                       </div>
                     </div>
-                  ))}
+                  ))
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-gray-400">No ownership history available</p>
+                  </div>
+                )}
               </div>
             </div>
 
