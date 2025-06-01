@@ -30,22 +30,28 @@ function BrandDashboard() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
     const fetchProducts = async () => {
       try {
+        setIsLoading(true);
         const res = await fetch("/api/getAllNFT");
-        const json = await res.json();
+        const data = await res.json();
+        console.log("API Response:", data);
 
-        if (!Array.isArray(json)) {
-          throw new Error("Invalid data format");
+        if (!data.products || !Array.isArray(data.products)) {
+          throw new Error("Invalid data format: products array not found");
         }
 
-        setProducts(json);
-        setFilteredProducts(json);
+        setProducts(data.products);
+        setFilteredProducts(data.products);
       } catch (err: any) {
+        console.error("Error fetching products:", err);
         toast.error("Failed to load products: " + err.message);
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -168,51 +174,61 @@ function BrandDashboard() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredProducts.length > 0 ? (
-            filteredProducts.map((product) => (
-              <div
-                key={product._id}
-                className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl overflow-hidden transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/10"
-              >
-                <div className="relative h-48">
-                  <Image
-                    src={product.image || "/default-product.jpg"}
-                    alt={product.name}
-                    fill
-                    className="object-cover rounded-t-xl"
-                  />
-                  <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-sm text-xs font-medium py-1 px-2 rounded-full">
-                    {product.category || "Unknown"}
-                  </div>
-                </div>
-                <div className="p-4">
-                  <h3 className="text-lg font-semibold">{product.name}</h3>
-                  <p className="text-sm text-gray-400 mt-1">{product.description}</p>
-                  <div className="mt-4 flex justify-between items-center">
-                    <Button
-                      variant="outline"
-                      className="border border-white/20 bg-white/5 backdrop-blur-sm text-white hover:bg-white/10 px-4 py-2 rounded-lg text-sm"
-                      onClick={() => openDetails(product)}
-                    >
-                      Details <Info className="ml-1 h-4 w-4" />
-                    </Button>
-                    <p className="text-xs text-gray-400">
-                      ID: #{product._id.slice(-4).padStart(4, "0")}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ))
-          ) : (
-            <div className="col-span-3 text-center py-12">
-              <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-8">
-                <h3 className="text-xl font-medium text-gray-300">No products found</h3>
-                <p className="text-gray-400 mt-2">Try adjusting your search criteria</p>
-              </div>
+        {/* Loading State */}
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <div className="w-16 h-16 border-4 border-t-purple-500 border-white/20 rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-gray-300">Loading products...</p>
             </div>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredProducts.length > 0 ? (
+              filteredProducts.map((product) => (
+                <div
+                  key={product._id}
+                  className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl overflow-hidden transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/10"
+                >
+                  <div className="relative h-48">
+                    <Image
+                      src={product.image || "/default-product.jpg"}
+                      alt={product.name}
+                      fill
+                      className="object-cover rounded-t-xl"
+                    />
+                    <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-sm text-xs font-medium py-1 px-2 rounded-full">
+                      {product.category || "Unknown"}
+                    </div>
+                  </div>
+                  <div className="p-4">
+                    <h3 className="text-lg font-semibold">{product.name}</h3>
+                    <p className="text-sm text-gray-400 mt-1">{product.description}</p>
+                    <div className="mt-4 flex justify-between items-center">
+                      <Button
+                        variant="outline"
+                        className="border border-white/20 bg-white/5 backdrop-blur-sm text-white hover:bg-white/10 px-4 py-2 rounded-lg text-sm"
+                        onClick={() => openDetails(product)}
+                      >
+                        Details <Info className="ml-1 h-4 w-4" />
+                      </Button>
+                      <p className="text-xs text-gray-400">
+                        ID: #{product._id.slice(-4).padStart(4, "0")}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="col-span-3 text-center py-12">
+                <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-8">
+                  <h3 className="text-xl font-medium text-gray-300">No products found</h3>
+                  <p className="text-gray-400 mt-2">Try adjusting your search criteria</p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </main>
 
       {/* Background Effects */}
