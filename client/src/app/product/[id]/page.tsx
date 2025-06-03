@@ -87,6 +87,12 @@ export default function NFTDetailPage() {
   const [isOwner, setIsOwner] = useState<boolean>(false)
   const [userAddress, setUserAddress] = useState<string>("")
   const [showBuyModal, setShowBuyModal] = useState<boolean>(false)
+  const [isClient, setIsClient] = useState(false)
+
+  // Ensure we're on the client side
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
 
   // Format address for display
   const formatAddress = (address: string): string => {
@@ -156,6 +162,11 @@ export default function NFTDetailPage() {
   }
 
   const handleTransferNFT = async () => {
+    if (!isClient) {
+      toast.error("Please wait for the page to load completely")
+      return
+    }
+
     if (!transferAddress || !transferAddress.startsWith("0x") || transferAddress.length !== 42) {
       toast.error("Please enter a valid wallet address")
       return
@@ -164,6 +175,17 @@ export default function NFTDetailPage() {
     setIsTransferring(true)
     try {
       toast.loading("Transferring NFT...", { id: "transfer" })
+      
+      // Get the current user's address
+      const { signer } = await getProviderAndSigner()
+      const userAddress = await signer.getAddress()
+      
+      // Check if the user is the owner
+      if (nft?.owner.toLowerCase() !== userAddress.toLowerCase()) {
+        throw new Error("You are not the owner of this NFT")
+      }
+
+      // Perform the transfer
       await transferNFT(tokenId, transferAddress)
 
       // Update the NFT data with new owner
@@ -173,10 +195,13 @@ export default function NFTDetailPage() {
           owner: transferAddress,
         })
       }
+      
       // Close the modal
       setShowTransferModal(false)
+      
       // Refresh ownership history
-      handleGetOwnershipHistory(tokenId)
+      await handleGetOwnershipHistory(tokenId)
+      
       toast.success("NFT transferred successfully!", { id: "transfer" })
     } catch (error: any) {
       console.error("Error transferring NFT:", error)
@@ -188,6 +213,8 @@ export default function NFTDetailPage() {
         errorMessage = "Insufficient funds for gas"
       } else if (error.message?.includes("execution reverted")) {
         errorMessage = "Transfer failed: Contract execution reverted"
+      } else if (error.message?.includes("not the owner")) {
+        errorMessage = "You are not the owner of this NFT"
       }
 
       toast.error(errorMessage, { id: "transfer" })

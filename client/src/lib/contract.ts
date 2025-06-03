@@ -11,14 +11,23 @@ export const escrowContract_ABI = escrowContractData.abi;
 
 // Function to get provider and signer
 export const getProviderAndSigner = async () => {
-  if (typeof window === 'undefined' || !window.ethereum) {
-    throw new Error('Please install MetaMask to use this feature');
-  }
-
   try {
+    // Check if we're in a browser environment
+    if (typeof window === 'undefined') {
+      throw new Error('This function can only be called in a browser environment');
+    }
+
+    // Check if MetaMask is installed
+    if (!window.ethereum) {
+      throw new Error('Please install MetaMask to use this feature');
+    }
+
     // Request account access
-    await window.ethereum.request({ method: 'eth_requestAccounts' });
-    
+    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+    if (!accounts || accounts.length === 0) {
+      throw new Error('No accounts found. Please connect your wallet.');
+    }
+
     // Create provider and signer
     const provider = new ethers.BrowserProvider(window.ethereum);
     const signer = await provider.getSigner();
@@ -30,8 +39,15 @@ export const getProviderAndSigner = async () => {
     }
 
     return { provider, signer };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error getting provider and signer:', error);
+    if (error.code === 4001) {
+      // User rejected the connection
+      throw new Error('Please connect your wallet to continue');
+    } else if (error.code === -32002) {
+      // Request already pending
+      throw new Error('Please check your MetaMask wallet for pending connection requests');
+    }
     throw error;
   }
 };

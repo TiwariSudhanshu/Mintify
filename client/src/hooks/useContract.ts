@@ -1,12 +1,19 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import { getProviderAndSigner, contract_ABI, escrowContract_ABI, contractAddress, escrowContractAddress } from '@/lib/contract';
 import { toast } from 'sonner';
 
 export const useContract = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+
+  // Ensure we're on the client side
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const mintNFT = async (recipient: string, productInfo: string) => {
+    if (!isClient) return;
     try {
       setIsLoading(true);
       const { signer } = await getProviderAndSigner();
@@ -25,6 +32,7 @@ export const useContract = () => {
   };
 
   const initiatePayment = async (productId: string, seller: string, amountInEth: string) => {
+    if (!isClient) return;
     try {
       setIsLoading(true);
       const { signer } = await getProviderAndSigner();
@@ -63,6 +71,7 @@ export const useContract = () => {
   };
 
   const approvePayment = async (productId: string) => {
+    if (!isClient) return;
     try {
       setIsLoading(true);
       const { signer } = await getProviderAndSigner();
@@ -95,6 +104,7 @@ export const useContract = () => {
   };
 
   const rejectPayment = async (productId: string) => {
+    if (!isClient) return;
     try {
       setIsLoading(true);
       const { signer } = await getProviderAndSigner();
@@ -127,27 +137,40 @@ export const useContract = () => {
   };
 
   const transferNFT = async (tokenId: string, to: string) => {
+    if (!isClient) {
+      throw new Error('Please wait for the page to load completely');
+    }
+
     try {
       setIsLoading(true);
-      const response = await fetch('/api/transferNFT', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ tokenId, newOwner: to }),
-      });
+      
+      // Get provider and signer (this will handle MetaMask connection)
+      const { signer } = await getProviderAndSigner();
+      
+      // Create contract instance
+      const contract = new ethers.Contract(contractAddress, contract_ABI, signer);
+      
+      // Call the transfer function directly on the contract
+      const tx = await contract.transferFrom(await signer.getAddress(), to, tokenId);
+      
+      // Wait for transaction to be mined
+      await tx.wait();
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to transfer NFT');
-      }
-
-      const data = await response.json();
       toast.success('NFT transferred successfully!');
-      return data;
+      return tx;
     } catch (error: any) {
       console.error('Error transferring NFT:', error);
-      toast.error(error.message || 'Failed to transfer NFT');
+      let errorMessage = 'Failed to transfer NFT';
+
+      if (error.message?.includes('user rejected')) {
+        errorMessage = 'Transaction was rejected';
+      } else if (error.message?.includes('insufficient funds')) {
+        errorMessage = 'Insufficient funds for gas';
+      } else if (error.message?.includes('execution reverted')) {
+        errorMessage = 'Transfer failed: Contract execution reverted';
+      }
+
+      toast.error(errorMessage);
       throw error;
     } finally {
       setIsLoading(false);
