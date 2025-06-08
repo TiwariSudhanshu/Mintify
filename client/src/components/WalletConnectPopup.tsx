@@ -43,6 +43,7 @@ export default function WalletConnectPopup({
   onClose,
 }: WalletConnectPopupProps) {
   const [isConnecting, setIsConnecting] = useState(false);
+  const [isCheckingWallet, setIsCheckingWallet] = useState(false);
   const [walletExists, setWalletExists] = useState(false);
   const [data, setData] = useState({ name: "", email: "", role: "" });
   // Get wallet state from Redux
@@ -61,6 +62,7 @@ export default function WalletConnectPopup({
 
   const handleConnect = async () => {
     setIsConnecting(true);
+    setIsCheckingWallet(true);
 
     try {
       // Check if MetaMask is installed
@@ -93,10 +95,8 @@ export default function WalletConnectPopup({
             toast.success(`Welcome back, ${existingUser.name}!`);
             setWalletExists(true);
             setData({ name: existingUser.name, email: existingUser.email, role: existingUser.userRole });
-            // Proceed with login logic
           } else {
             toast.info("Wallet not registered. Please complete registration.");
-            // Trigger registration popup logic
             setWalletExists(false);
           }
         } else {
@@ -109,6 +109,7 @@ export default function WalletConnectPopup({
       console.error("Error connecting wallet:", error);
     } finally {
       setIsConnecting(false);
+      setIsCheckingWallet(false);
     }
   };
 
@@ -185,21 +186,31 @@ export default function WalletConnectPopup({
           </div>
 
           <DialogFooter>
-            {isConnected && walletExists ? (
-              <Button
-                onClick={handleLogin}
-                className="bg-gray-600 text-gray-200 hover:bg-gray-500"
-              >
-                Login
-              </Button>
-            ) : isConnected && !walletExists ? (
-              <Button
-                onClick={handleRegistration}
-                className="bg-gray-600 text-gray-200 hover:bg-gray-500"
-              >
-                Register Wallet
-              </Button>
-            ) : null}
+            {isConnected && !isCheckingWallet && (
+              <>
+                {walletExists ? (
+                  <Button
+                    onClick={handleLogin}
+                    className="bg-gray-600 text-gray-200 hover:bg-gray-500"
+                  >
+                    Login
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={handleRegistration}
+                    className="bg-gray-600 text-gray-200 hover:bg-gray-500"
+                  >
+                    Register Wallet
+                  </Button>
+                )}
+              </>
+            )}
+            {isCheckingWallet && (
+              <div className="flex items-center justify-center w-full">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-500"></div>
+                <span className="ml-2 text-gray-300">Checking wallet...</span>
+              </div>
+            )}
 
             <Button
               onClick={onClose}

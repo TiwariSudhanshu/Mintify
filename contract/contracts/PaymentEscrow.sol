@@ -19,20 +19,32 @@ contract PaymentEscrow {
     event PaymentRefunded(uint256 productId, address indexed buyer);
 
     // Buyer initiates payment
-    function initiatePayment(uint256 productId, address seller) public payable {
-        require(msg.value > 0, "Must send payment.");
-        require(!payments[productId].exists, "Payment already exists.");
+  function initiatePayment(uint256 productId, address seller) public payable {
+    require(msg.value > 0, "Payment value must be greater than 0");
+    
+    // Check seller is not zero address
+    require(seller != address(0), "Seller address cannot be zero");
+    
+    // Check that payment for this productId does NOT already exist
+    require(!payments[productId].exists, "Payment for this product already exists");
 
-        payments[productId] = Payment({
-            buyer: msg.sender,
-            seller: seller,
-            amount: msg.value,
-            isPaid: false,
-            exists: true
-        });
+    // Optionally, you could check buyer != seller to prevent self-payments
+    require(msg.sender != seller, "Buyer and seller cannot be the same address");
 
-        emit PaymentInitiated(productId, msg.sender, seller, msg.value);
-    }
+    // You can also add a max payment limit check if needed, e.g. max 100 ETH
+    require(msg.value <= 100 ether, "Payment exceeds maximum allowed amount");
+
+    payments[productId] = Payment({
+        buyer: msg.sender,
+        seller: seller,
+        amount: msg.value,
+        isPaid: false,
+        exists: true
+    });
+
+    emit PaymentInitiated(productId, msg.sender, seller, msg.value);
+}
+
 
     // Seller approves payment (releases funds)
     function approvePayment(uint256 productId) public {

@@ -5,18 +5,18 @@ async function main() {
   console.log("Deploying contracts with the account:", deployer.address);
 
   // Deploy ProductTracking
-  console.log("Getting contract factory for MintNFT...");
-  const MintNFT = await hre.ethers.getContractFactory(
-    "MintNFT"
-  );
-  console.log("Deploying MintNFT contract...");
-  const mintNFT = await MintNFT.deploy();
-  console.log("Awaiting deployment confirmation...");
-  await mintNFT.waitForDeployment();
-  console.log(
-    "MintNFT deployed to:",
-    await mintNFT.getAddress()
-  );
+  // console.log("Getting contract factory for MintNFT...");
+  // const MintNFT = await hre.ethers.getContractFactory(
+  //   "MintNFT"
+  // );
+  // console.log("Deploying MintNFT contract...");
+  // const mintNFT = await MintNFT.deploy();
+  // console.log("Awaiting deployment confirmation...");
+  // await mintNFT.waitForDeployment();
+  // console.log(
+  //   "MintNFT deployed to:",
+  //   await mintNFT.getAddress()
+  // );
 
   // Deploy PaymentEscrow
   console.log("Getting contract factory for PaymentEscrow...");
@@ -28,18 +28,18 @@ async function main() {
   console.log("PaymentEscrow deployed to:", await paymentEscrow.getAddress());
 
   // Deploy SupplyChainVerification
-  console.log("Getting contract factory for SupplyChainVerification...");
-  const SupplyChainVerification = await hre.ethers.getContractFactory(
-    "SupplyChainVerification"
-  );
-  console.log("Deploying SupplyChainVerification contract...");
-  const supplyChainVerification = await SupplyChainVerification.deploy();
-  console.log("Awaiting deployment confirmation...");
-  await supplyChainVerification.waitForDeployment();
-  console.log(
-    "SupplyChainVerification deployed to:",
-    await supplyChainVerification.getAddress()
-  );
+  // console.log("Getting contract factory for SupplyChainVerification...");
+  // const SupplyChainVerification = await hre.ethers.getContractFactory(
+  //   "SupplyChainVerification"
+  // );
+  // console.log("Deploying SupplyChainVerification contract...");
+  // const supplyChainVerification = await SupplyChainVerification.deploy();
+  // console.log("Awaiting deployment confirmation...");
+  // await supplyChainVerification.waitForDeployment();
+  // console.log(
+  //   "SupplyChainVerification deployed to:",
+  //   await supplyChainVerification.getAddress()
+  // );
 }
 
 main().catch((error) => {

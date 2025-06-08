@@ -39,7 +39,6 @@ function BrandDashboard() {
         setIsLoading(true);
         const res = await fetch("/api/getAllNFT");
         const data = await res.json();
-        console.log("API Response:", data);
 
         if (!data.products || !Array.isArray(data.products)) {
           throw new Error("Invalid data format: products array not found");

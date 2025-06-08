@@ -36,13 +36,16 @@ export const useContract = () => {
     try {
       setIsLoading(true);
       const { signer } = await getProviderAndSigner();
+      console.log('Initiating payment for productId:', productId, 'to seller:', seller, 'amount:', amountInEth);
+      console.log('Using escrow contract address:', escrowContractAddress);
       const escrowContract = new ethers.Contract(escrowContractAddress, escrowContract_ABI, signer);
-      
+      console.log('Escrow contract instance:', escrowContract);
+      console.log("Value being sent:", ethers.parseEther(amountInEth).toString());
       const tx = await escrowContract.initiatePayment(productId, seller, {
         value: ethers.parseEther(amountInEth)
       });
       await tx.wait();
-
+      console.log('Payment transaction successful:', tx);
       // Save payment info to database
       const response = await fetch('/api/initiatePayment', {
         method: 'POST',

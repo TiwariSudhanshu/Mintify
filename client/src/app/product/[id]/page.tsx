@@ -145,7 +145,6 @@ export default function NFTDetailPage() {
 
       // Get ownership history from contract
       const history = await contract.getOwnershipHistory(id)
-      console.log("Contract ownership history:", history)
 
       // Format the history data for display
       const formattedHistory = history.map((address: string) => ({
@@ -222,25 +221,16 @@ export default function NFTDetailPage() {
       setIsTransferring(false)
     }
   }
-
-  const handleApprovePayment = async () => {
-    try {
-      await approvePayment(tokenId)
-      setShowApprovePaymentModal(false)
-    } catch (error) {
-      console.error("Error approving payment:", error)
-    }
-  }
-
-  const handleRejectPayment = async () => {
-    try {
-      await rejectPayment(tokenId)
-      setShowRejectPaymentModal(false)
-    } catch (error) {
-      console.error("Error rejecting payment:", error)
-    }
-  }
-
+  const {initiatePayment} = useContract();
+  const handleInitiatePayment = async () => {
+try {
+  let price = String(nft?.priceInEth || nft?.price || 0)
+    await initiatePayment(tokenId, nft?.owner || "", price);
+  setShowBuyModal(false);
+} catch (error) {
+  console.error("Error initiating payment:", error);
+  toast.error("Failed to initiate payment. Please try again.");
+}  }
   // Check if current user is the owner
   const checkOwnership = async () => {
     try {
@@ -259,7 +249,6 @@ export default function NFTDetailPage() {
   // Fetch NFT data when component mounts
   useEffect(() => {
     const fetchNFTData = async () => {
-      console.log("Fetching NFT data for tokenId: ", tokenId)
       setLoading(true)
       try {
         // Fetch from database
@@ -276,7 +265,6 @@ export default function NFTDetailPage() {
         }
 
         const data = await response.json()
-        console.log("NFT Data from DB: ", data)
         const productInfo = data.ProductInfo
 
         // Get current owner from contract
@@ -303,7 +291,6 @@ export default function NFTDetailPage() {
           createdAt: productInfo.createdAt || new Date().toISOString(),
         }
 
-        console.log("Processed NFT Data: ", processedData)
         setNft(processedData)
 
         // Check ownership
@@ -1031,7 +1018,7 @@ export default function NFTDetailPage() {
                       className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-lg shadow-lg flex items-center justify-center"
                       onClick={() => {
                         // Handle buy NFT logic here
-                        toast.success("Purchase request sent to owner!")
+                        handleInitiatePayment();
                         setShowBuyModal(false)
                       }}
                     >
