@@ -8,7 +8,6 @@ export async function POST(req: Request) {
         console.log("Connected to DB");
         
         const { tokenId } = await req.json();
-        console.log("Searching for product with tokenId:", tokenId);
 
         if (!tokenId) {
             return NextResponse.json(
@@ -18,7 +17,6 @@ export async function POST(req: Request) {
         }
 
         const product = await Product.findOne({ tokenId });
-        console.log("Found product:", product);
 
         if (!product) {
             console.log("No product found with tokenId:", tokenId);
