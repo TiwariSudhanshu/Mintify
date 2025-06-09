@@ -122,6 +122,39 @@ export default function WalletConnectPopup({
     setShowRegisterPopup(true);
   };
 
+  const handleRegisterClose = async () => {
+    setShowRegisterPopup(false);
+    // Recheck wallet status when registration popup closes
+    setIsCheckingWallet(true);
+    try {
+      const response = await fetch("/api/check-wallet", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ address }),
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        if (data.exists) {
+          setWalletExists(true);
+          setData({ 
+            name: data.existingUser.name, 
+            email: data.existingUser.email, 
+            role: data.existingUser.userRole 
+          });
+        } else {
+          setWalletExists(false);
+        }
+      }
+    } catch (error) {
+      console.error("Error checking wallet:", error);
+    } finally {
+      setIsCheckingWallet(false);
+    }
+  };
+
   const router = useRouter();
   const handleLogin = () => {
     // dispatch({ type: "userRole/setRole", payload: data.role });
@@ -224,7 +257,7 @@ export default function WalletConnectPopup({
       {showRegisterPopup && (
         <RegisterPopup
           isOpen={showRegisterPopup}
-          onClose={() => setShowRegisterPopup(false)}
+          onClose={handleRegisterClose}
           address={address}
         />
       )}

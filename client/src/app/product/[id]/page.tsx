@@ -223,14 +223,9 @@ export default function NFTDetailPage() {
   }
   const {initiatePayment} = useContract();
   const handleInitiatePayment = async () => {
-try {
-  let price = String(nft?.priceInEth || nft?.price || 0)
-    await initiatePayment(tokenId, nft?.owner || "", price);
-  setShowBuyModal(false);
-} catch (error) {
-  console.error("Error initiating payment:", error);
-  toast.error("Failed to initiate payment. Please try again.");
-}  }
+    toast.info("Buying NFT feature will be added soon!");
+    setShowBuyModal(false);
+  }
   // Check if current user is the owner
   const checkOwnership = async () => {
     try {

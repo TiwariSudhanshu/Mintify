@@ -33,6 +33,27 @@ const RegisterPopup: React.FC<RegisterPopupProps> = ({ isOpen, onClose, address 
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const checkWalletStatus = async () => {
+    try {
+      const response = await fetch("/api/check-wallet", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ address }),
+      });
+
+      const data = await response.json();
+      if (response.ok && data.exists) {
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("Error checking wallet:", error);
+      return false;
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -46,9 +67,16 @@ const RegisterPopup: React.FC<RegisterPopupProps> = ({ isOpen, onClose, address 
 
       if (response.ok) {
         toast.success(data.message);
-        dispatch({ type: 'userRole/setRole', payload: data.data.role });
-        dispatch({ type: 'userMeta/setMeta', payload: { name: data.data.name, email: data.data.email } });
-        router.push("/");
+        dispatch({ type: 'userRole/setRole', payload: formData.userRole });
+        dispatch({ type: 'userMeta/setMeta', payload: { name: formData.name, email: formData.email } });
+        
+        // Check wallet status immediately after registration
+        const walletExists = await checkWalletStatus();
+        if (walletExists) {
+          // Update parent component's state through the onClose callback
+          onClose();
+          router.push("/dashboard");
+        }
       } else {
         toast.error(data.message || "Error registering wallet");
       }
@@ -56,7 +84,6 @@ const RegisterPopup: React.FC<RegisterPopupProps> = ({ isOpen, onClose, address 
       console.error("Error in registerWallet API: ", error);
       toast.error("Internal server error");
     }
-    onClose();
   };
 
   return (
@@ -87,7 +114,6 @@ const RegisterPopup: React.FC<RegisterPopupProps> = ({ isOpen, onClose, address 
             <option value="">Select Role</option>
             <option value="Brand">Brand</option>
             <option value="Consumer">Consumer</option>
-            <option value="WholeSaler">WholeSaler</option>
           </select>
 
           <input
